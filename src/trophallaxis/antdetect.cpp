@@ -181,9 +181,7 @@ std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::D
 
   if (device_type != torch::kCPU)
   {
-    // module.to(torch::kHalf);
     input_tensor = input_tensor.to(torch::kHalf);
-    // std::cout<<"....to(torch::kHalf)!!!"<<std::endl;
   }
   //----------------------------------
 
@@ -796,7 +794,7 @@ cv::Mat draw_compare(ALObject obj, ALObject obj2, cv::Scalar color)
   return imgres;
 }
 
-cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, std::vector<ALObject> &al_objs, bool usedetector)
+cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector)
 {
   cv::Scalar class_name_color[20] = {
       cv::Scalar(255, 0, 0),
