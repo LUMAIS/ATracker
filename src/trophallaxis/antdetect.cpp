@@ -914,7 +914,6 @@ cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, c
       }
     }
   }
-
   //--------------------</detection using a classifier>---------
 
   //--------------------<moution detections>--------------------

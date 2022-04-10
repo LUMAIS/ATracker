@@ -176,7 +176,7 @@ int testmodule(std::string strpath);
 
 std::vector<cv::Point2f> detectorT(torch::jit::script::Module module, cv::Mat imageBGR, torch::DeviceType device_type);
 std::vector<cv::Mat> LoadVideo(const std::string &paths, uint8_t startframe, uint8_t getframes);
-std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::DeviceType device_type);                                         // latest version with CUDA support
+std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::DeviceType device_type);// latest version with CUDA support
 
 cv::Point2f claster_center(std::vector<cv::Point2f> claster_points);
-cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, std::vector<ALObject> &testobjs, bool usedetector);
+cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);

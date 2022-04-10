@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
         {
             std::cout << "[Frame: "<<start+i<<"]" << std::endl;
             //detectorV4(pathmodel, d_images.at(i), device_type);
-            frame = DetectorMotionV2(pathmodel,device_type,d_images.at(i),d_images.at(i+1),objects,start+i,testobjs, false);  
+            frame = DetectorMotionV2(pathmodel,device_type,d_images.at(i),d_images.at(i+1),objects,start+i,false);  
             writer.write(frame);
         }
         writer.release();
