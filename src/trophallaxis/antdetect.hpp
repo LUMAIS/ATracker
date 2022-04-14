@@ -71,6 +71,7 @@ public:
     this->img = img;
     center_determine(true);
     model_center = claster_center;
+    nm = false;
   }
 
   void center_determine(bool samplescreation)
@@ -180,3 +181,5 @@ std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::D
 
 cv::Point2f claster_center(std::vector<cv::Point2f> claster_points);
 cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
+cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
+
