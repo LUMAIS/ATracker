@@ -1306,7 +1306,7 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
   maxp.y = 0;
   cv::Mat bufimg;
 
-  std::vector<cv::Point2f> center;
+  std::vector<cv::Point2f> mpoints;
   std::vector<int> npsamples;
 
   std::cout << "claster_points.size() = " <<claster_points.size()<< std::endl;
@@ -1333,25 +1333,6 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
   cv::Mat imag = obj.img;
 
-
-  /*
-  int start_y = half_imgsize - (maxp.y - minp.y);
-  if(start_y < 0)
-    start_y = 0;
-
-  int start_x = half_imgsize - (maxp.x - minp.x);
-  if(start_x < 0)
-    start_x = 0;
-
-  int and_y = half_imgsize + (maxp.y - minp.y);
-  if(and_y > (int)(imag.rows / st))
-    and_y = (int)(imag.rows / st);
-
-  int and_x = half_imgsize + (maxp.x - minp.x);
-  if(and_x > (int)(imag.cols / st))
-    and_x = (int)(imag.cols / st);
-*/
-
   int start_y = -(int)(imag.rows / st) / 2;
   int start_x = -(int)(imag.cols / st) / 2;
 
@@ -1372,22 +1353,15 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
         bufp.x = claster_points.at(i).x - minp.x;
         bufp.y = claster_points.at(i).y - minp.y;
+
         if ((bufp.x + step_x * st) + resolution / reduseres > imag.cols || (bufp.x + step_x * st) < 0)
         {
           continue;
-          //step_x = (int)(imag.cols / st);
-          //std::cout << "break x" << std::endl;
-          //break;
         }
 
         if ((bufp.y + step_y * st) + resolution / reduseres > imag.rows || (bufp.y + step_y * st) < 0) 
         {
           continue;
-          //step_y = (int)(imag.rows / st);
-          //step_x = (int)(imag.cols / st);
-
-          //std::cout << "break y" << std::endl;
-          //break;
         }
 
         cv::Mat sample = imag(cv::Range(bufp.y + step_y * st, bufp.y + step_y * st + resolution / reduseres), cv::Range(bufp.x + step_x * st, bufp.x + step_x * st + resolution / reduseres));
@@ -1396,7 +1370,6 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
         ns++;
         //std::cout << "np - " << np << std::endl;
       }
-
 
       np = (int)(claster_samples.size()*np/ns);
       //std::cout << "---------------------------------" << std::endl;
@@ -1410,14 +1383,16 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
         cv::waitKey(0);
       }
       
-      
-      bufp.y = half_imgsize - step_y*st;
-      bufp.x = half_imgsize - step_x*st;
+      //bufp.y = half_imgsize - step_y*st;
+      //bufp.x = half_imgsize - step_x*st;
+
+      bufp.x = claster_points.at(0).x - minp.x;
+      bufp.y = claster_points.at(0).y - minp.y;
 
       if(bufp.y > 0 && bufp.y < maxp.y - minp.y && bufp.x > 0 && bufp.x < maxp.x - minp.x && np > 0)
       {
         npsamples.push_back(np);
-        center.push_back(bufp);
+        mpoints.push_back(bufp);
       }
     }
   }
@@ -1473,7 +1448,7 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
   int color_step = (max - min) / (3*255);
 
-  cv::Mat imgpmap(maxp.y - minp.y + resolution / reduseres, maxp.x - minp.x + resolution / reduseres, CV_8UC3, cv::Scalar(0, 0, 0));
+  cv::Mat imgpmap(imag.cols, imag.rows, CV_8UC3, cv::Scalar(0, 0, 0));
 
   uint8_t *pixelPtr1 = (uint8_t *)imgpmap.data;
   int cn = imgpmap.channels();
@@ -1501,12 +1476,13 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
       blue = (uint8_t)(3*255 - Pcolor);
     }
 
-    pixelPtr1[(size_t)center.at(i).y * imgpmap.cols * cn + (size_t)center.at(i).x * cn + 0] = blue; // B
-    pixelPtr1[(size_t)center.at(i).y * imgpmap.cols * cn + (size_t)center.at(i).x * cn + 1] = (uint8_t)0; // G
-    pixelPtr1[(size_t)center.at(i).y * imgpmap.cols * cn + (size_t)center.at(i).x * cn + 2] = red;// R
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 0] = blue; // B
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 1] = (uint8_t)0; // G
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 2] = red;// R
 
   }
 
+/*
   cv::Mat img;
   img = frame(cv::Range(new_center.y - half_imgsize, new_center.y + half_imgsize), cv::Range(new_center.x - half_imgsize, new_center.x + half_imgsize));
   cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
@@ -1532,9 +1508,10 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
   local_center.y = half_imgsize;
 
   cv::circle(imgcenter, local_center, 1, cv::Scalar(255, 0, 0), 1);
-
+*/
+  
   imshow("imgpmap", imgpmap);
-  imshow("imgcenter", imgcenter);
+  //imshow("imgcenter", imgcenter);
   cv::waitKey(0);
 }
 
