@@ -1290,6 +1290,129 @@ cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, c
   return baseimag;
 }
 
+void draw_map_prob(std::vector<int> npsamples, std::vector<cv::Point2f> mpoints)
+{
+  int max = npsamples.at(0);
+  int min = npsamples.at(1);
+  cv::Point2f mpoint;
+
+  for (int i = 0; i < npsamples.size(); i++)
+  {
+    if (max < npsamples.at(i))
+      max = npsamples.at(i);
+
+    if (min > npsamples.at(i))
+    {
+      min = npsamples.at(i);
+      mpoint = mpoints.at(i);
+    }
+  }
+
+  for (int i = 0; i < npsamples.size(); i++)
+    npsamples.at(i) -= min;
+
+  int color_step = (int)((max - min) / (3 * 255));
+
+  cv::Mat imgpmap(2 * half_imgsize, 2 * half_imgsize, CV_8UC3, cv::Scalar(0, 0, 0));
+
+  uint8_t *pixelPtr1 = (uint8_t *)imgpmap.data;
+  int cn = imgpmap.channels();
+  cv::Scalar_<uint8_t> bgrPixel1;
+
+  for (int i = 0; i < npsamples.size(); i++)
+  {
+    int Pcolor = 3 * 255 - (int)(npsamples.at(i) / color_step);
+
+    uint8_t red;
+    uint8_t blue;
+    if (Pcolor < 255)
+    {
+      red = (uint8_t)0;
+      blue = (uint8_t)Pcolor;
+    }
+    else if (Pcolor > 255 && Pcolor < 2 * 255)
+    {
+      red = (uint8_t)(Pcolor - 255);
+      blue = (uint8_t)255;
+    }
+    else
+    {
+      red = (uint8_t)255;
+      blue = (uint8_t)(3 * 255 - Pcolor);
+    }
+
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 0] = blue;       // B
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 1] = (uint8_t)0; // G
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 2] = red;        // R
+  }
+
+  cv::circle(imgpmap, mpoint, 1, cv::Scalar(0, 255, 0), 1);
+  cv::resize(imgpmap, imgpmap, cv::Size(imgpmap.rows * 5, imgpmap.cols * 5), cv::InterpolationFlags::INTER_CUBIC);
+  imshow("imgpmap", imgpmap);
+  cv::waitKey(0);
+}
+
+void draw_map_prob_v2 (std::vector<int> npsamples1, std::vector<int> npsamples2, std::vector<cv::Point2f> mpoints)
+{
+   int max = npsamples.at(0);
+  int min = npsamples.at(1);
+  cv::Point2f mpoint;
+
+  for (int i = 0; i < npsamples.size(); i++)
+  {
+    if (max < npsamples.at(i))
+      max = npsamples.at(i);
+
+    if (min > npsamples.at(i))
+    {
+      min = npsamples.at(i);
+      mpoint = mpoints.at(i);
+    }
+  }
+
+  for (int i = 0; i < npsamples.size(); i++)
+    npsamples.at(i) -= min;
+
+  int color_step = (int)((max - min) / (3 * 255));
+
+  cv::Mat imgpmap(2 * half_imgsize, 2 * half_imgsize, CV_8UC3, cv::Scalar(0, 0, 0));
+
+  uint8_t *pixelPtr1 = (uint8_t *)imgpmap.data;
+  int cn = imgpmap.channels();
+  cv::Scalar_<uint8_t> bgrPixel1;
+
+  for (int i = 0; i < npsamples.size(); i++)
+  {
+    int Pcolor = 3 * 255 - (int)(npsamples.at(i) / color_step);
+
+    uint8_t red;
+    uint8_t blue;
+    if (Pcolor < 255)
+    {
+      red = (uint8_t)0;
+      blue = (uint8_t)Pcolor;
+    }
+    else if (Pcolor > 255 && Pcolor < 2 * 255)
+    {
+      red = (uint8_t)(Pcolor - 255);
+      blue = (uint8_t)255;
+    }
+    else
+    {
+      red = (uint8_t)255;
+      blue = (uint8_t)(3 * 255 - Pcolor);
+    }
+
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 0] = blue;       // B
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 1] = (uint8_t)0; // G
+    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 2] = red;        // R
+  }
+
+  cv::circle(imgpmap, mpoint, 1, cv::Scalar(0, 255, 0), 1);
+  cv::resize(imgpmap, imgpmap, cv::Size(imgpmap.rows * 5, imgpmap.cols * 5), cv::InterpolationFlags::INTER_CUBIC);
+  imshow("imgpmap", imgpmap);
+  cv::waitKey(0);
+}
 
 void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject &obj, int id_frame)
 {
@@ -1299,6 +1422,9 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
   cv::Point2f maxp;
   cv::Point2f bufp;
 
+  cv::Point2f p1;
+  cv::Point2f p2;
+
   minp.y = frame.rows;
   minp.x = frame.cols;
 
@@ -1306,10 +1432,13 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
   maxp.y = 0;
   cv::Mat bufimg;
 
-  std::vector<cv::Point2f> mpoints;
+  std::vector<int> npforpoints;
   std::vector<int> npsamples;
+  std::vector<cv::Point2f> mpoints;
 
-  std::cout << "claster_points.size() = " <<claster_points.size()<< std::endl;
+  std::vector<std::vector<int>> all_npforpoints;
+
+  std::cout << "claster_points.size() = " << claster_points.size() << std::endl;
 
   for (int i = 0; i < claster_points.size(); i++)
   {
@@ -1327,30 +1456,34 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
     bufimg = frame(cv::Range(claster_points.at(i).y, claster_points.at(i).y + resolution / reduseres), cv::Range(claster_points.at(i).x, claster_points.at(i).x + resolution / reduseres));
     claster_samples.push_back(bufimg);
+
+    npforpoints.push_back(0);
   }
 
   int st = 1; // step for samles compare
 
   cv::Mat imag = obj.img;
 
-  int start_y = -(int)(imag.rows / st) / 2;
-  int start_x = -(int)(imag.cols / st) / 2;
+  int start_y = 0;
+  int start_x = 0;
 
-  int and_y = (int)(imag.rows / st);
-  int and_x = (int)(imag.cols / st);
+  int and_y = (int)((imag.rows - resolution / reduseres) / st);
+  int and_x = (int)((imag.cols - resolution / reduseres) / st);
 
+  int test = 8;
 
-  for (int step_y = start_y; step_y < and_y; step_y++)
+  for (int step_x = start_x; step_x < and_x; step_x++)
   {
-    for (int step_x = start_x; step_x < and_x; step_x++)
+    for (int step_y = start_y; step_y < and_y; step_y++)
     {
       int np = 0;
-      int ns = 1;
-      cv::Mat resimg(maxp.y - minp.y + resolution / reduseres, maxp.x - minp.x + resolution / reduseres, CV_8UC3, cv::Scalar(0, 0, 50));
+      int ns = 0;
 
+      // cv::Mat resimg(maxp.y - minp.y + resolution / reduseres, maxp.x - minp.x + resolution / reduseres, CV_8UC3, cv::Scalar(0, 0, 50));
+
+      /*
       for (int i = 0; i < claster_samples.size(); i++)
       {
-
         bufp.x = claster_points.at(i).x - minp.x;
         bufp.y = claster_points.at(i).y - minp.y;
 
@@ -1359,162 +1492,85 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
           continue;
         }
 
-        if ((bufp.y + step_y * st) + resolution / reduseres > imag.rows || (bufp.y + step_y * st) < 0) 
+        if ((bufp.y + step_y * st) + resolution / reduseres > imag.rows || (bufp.y + step_y * st) < 0)
         {
           continue;
         }
 
         cv::Mat sample = imag(cv::Range(bufp.y + step_y * st, bufp.y + step_y * st + resolution / reduseres), cv::Range(bufp.x + step_x * st, bufp.x + step_x * st + resolution / reduseres));
-        sample.copyTo(resimg(cv::Rect(bufp.x, bufp.y, resolution / reduseres, resolution / reduseres)));
-        np += samples_compV2(claster_samples.at(i), sample);// sample compare
+        //sample.copyTo(resimg(cv::Rect(bufp.x, bufp.y, resolution / reduseres, resolution / reduseres)));
+
+        npforpoints.at(i) = samples_compV2(claster_samples.at(i), sample);
+        np += npforpoints.at(i);// sample compare
         ns++;
         //std::cout << "np - " << np << std::endl;
       }
+      */
 
-      np = (int)(claster_samples.size()*np/ns);
-      //std::cout << "---------------------------------" << std::endl;
-      //std::cout << "np - " << np << std::endl;
-      //std::cout << "---------------------------------" << std::endl;
-      
-      if(id_frame > 98 && 2==3)
+      for (int i = 0; i < claster_samples.size(); i++)
       {
-        cv::resize(resimg, resimg, cv::Size((maxp.x - minp.x + resolution / reduseres) * 5, (maxp.y - minp.y + resolution / reduseres) * 5), cv::InterpolationFlags::INTER_CUBIC);
-        imshow("resimg", resimg);
-        cv::waitKey(0);
+        cv::Mat sample;
+        sample = imag(cv::Range(step_y * st, step_y * st + resolution / reduseres), cv::Range(step_x * st, step_x * st + resolution / reduseres));
+        int npbuf = samples_compV2(claster_samples.at(i), sample);
+        npforpoints.at(i) = npbuf;
+        np += npbuf; // sample compare
+        ns++;
       }
-      
-      //bufp.y = half_imgsize - step_y*st;
-      //bufp.x = half_imgsize - step_x*st;
 
-      bufp.x = claster_points.at(0).x - minp.x;
-      bufp.y = claster_points.at(0).y - minp.y;
+      // np = (int)(np*npforpoints.at(test));
 
-      if(bufp.y > 0 && bufp.y < maxp.y - minp.y && bufp.x > 0 && bufp.x < maxp.x - minp.x && np > 0)
+      // np = (int)(np-npforpoints.at(test));
+
+      // np = npforpoints.at(test);
+
+      // np = (int)np/(ns*2+1);
+
+      // std::cout << "---------------------------------" << std::endl;
+      // std::cout << "np - " << np << std::endl;
+      // std::cout << "---------------------------------" << std::endl;
+
+      if (2 == 3)
+      {
+        // cv::resize(resimg, resimg, cv::Size((maxp.x - minp.x + resolution / reduseres) * 5, (maxp.y - minp.y + resolution / reduseres) * 5), cv::InterpolationFlags::INTER_CUBIC);
+        // imshow("resimg", resimg);
+        // cv::waitKey(0);
+      }
+
+      // bufp.x = imag.rows - step_y*st;
+      // bufp.y = imag.cols - step_x*st;
+
+      bufp.y = step_y * st;
+      bufp.x = step_x * st;
+
+      if (bufp.y > 0 && bufp.y < imag.rows && bufp.x > 0 && bufp.x < imag.cols)
       {
         npsamples.push_back(np);
         mpoints.push_back(bufp);
+        all_npforpoints.push_back(npforpoints);
       }
     }
   }
 
-/*/--------------------------
-  int max = npsamples.at(0);
-  int min = npsamples.at(1);
-  for (int i = 0; i < npsamples.size(); i++)
-  {
-    if (max < npsamples.at(i))
-      max = npsamples.at(i);
+  std::vector<int> test_np1;
+  std::vector<int> test_np2;
 
-    if (min > npsamples.at(i))
-      min = npsamples.at(i);
-  }
-
-  for (int i = 0; i < npsamples.size(); i++)
-    npsamples.at(i) -= min;
-
-  int color_step = (max - min) / 255;
-
-  cv::Mat imgcenter(maxp.y - minp.y + resolution / reduseres, maxp.x - minp.x + resolution / reduseres, CV_8UC1, cv::Scalar(0, 0, 0));
-
-  for (int i = 0; i < npsamples.size(); i++)
-  {
-    imgcenter.at<uchar>(center.at(i).y, center.at(i).x) = 255 - npsamples.at(i) / color_step;
-  }
-//--------------------------*/
+  int testid1 = 0;
+  int testid2 = 5;
 
 
-  int max = npsamples.at(0);
-  int min = npsamples.at(1);
-  cv::Point2f new_center;
 
-  for (int i = 0; i < npsamples.size(); i++)
-  {
-    if (max < npsamples.at(i))
+    for (int i = 0; i < all_npforpoints.size(); i++)
     {
-      max = npsamples.at(i);
+      test_np1.push_back(all_npforpoints.at(i).at(testid1));
+      test_np2.push_back(all_npforpoints.at(i).at(testid2));
     }
       
+    draw_map_prob(test_np1, mpoints);
+    draw_map_prob(test_np2, mpoints);
 
-    if (min > npsamples.at(i))
-    {
-      min = npsamples.at(i);
-      new_center = center.at(i) + minp;
-    }
-     
-  }
 
-  for (int i = 0; i < npsamples.size(); i++)
-    npsamples.at(i) -= min;
-
-  int color_step = (max - min) / (3*255);
-
-  cv::Mat imgpmap(imag.cols, imag.rows, CV_8UC3, cv::Scalar(0, 0, 0));
-
-  uint8_t *pixelPtr1 = (uint8_t *)imgpmap.data;
-  int cn = imgpmap.channels();
-  cv::Scalar_<uint8_t> bgrPixel1;
-  
-  for (int i = 0; i < npsamples.size(); i++)
-  {
-    int Pcolor = 3*255 - npsamples.at(i) / color_step;
-    
-    uint8_t red;
-    uint8_t blue;
-    if(Pcolor < 255)
-    {
-      red = (uint8_t)0;
-      blue = (uint8_t)Pcolor;
-    }
-    else if(Pcolor > 255 && Pcolor < 2*255)
-    {
-      red = (uint8_t)(Pcolor - 255);
-      blue = (uint8_t)255;
-    } 
-    else
-    {
-      red = (uint8_t)255;
-      blue = (uint8_t)(3*255 - Pcolor);
-    }
-
-    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 0] = blue; // B
-    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 1] = (uint8_t)0; // G
-    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 2] = red;// R
-
-  }
-
-/*
-  cv::Mat img;
-  img = frame(cv::Range(new_center.y - half_imgsize, new_center.y + half_imgsize), cv::Range(new_center.x - half_imgsize, new_center.x + half_imgsize));
-  cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-  img.convertTo(img, CV_8UC3);
-  obj.img = img;
-  obj.claster_center = new_center;
-
-  cv::Point2f local_center;
-
-  local_center.x =  new_center.x - minp.x;
-  local_center.y =  new_center.y - minp.y;
-  cv::circle(imgpmap, local_center, 1, cv::Scalar(0, 255, 0), 1);
-  cv::resize(imgpmap, imgpmap, cv::Size(imgpmap.cols * 5, imgpmap.rows * 5), cv::InterpolationFlags::INTER_CUBIC);
-
-  
-  cv::Mat imgcenter;
-
-  imgcenter = frame(cv::Range(new_center.y - half_imgsize, new_center.y + half_imgsize), cv::Range(new_center.x - half_imgsize, new_center.x + half_imgsize));
-  imgcenter.convertTo(imgcenter, CV_8UC1);
-
-  
-  local_center.x = half_imgsize;
-  local_center.y = half_imgsize;
-
-  cv::circle(imgcenter, local_center, 1, cv::Scalar(255, 0, 0), 1);
-*/
-  
-  imshow("imgpmap", imgpmap);
-  //imshow("imgcenter", imgcenter);
-  cv::waitKey(0);
+    draw_map_prob_v2(test_np1, test_np2, mpoints)
 }
-
 
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector)
 {
@@ -1553,14 +1609,14 @@ cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, c
   cv::Mat framebuf = frame_resizing(frame);
 
   int mpc = 15;   // minimum number of points for a cluster (good value 15)
-  int nd = 15;     //(good value 6-15)
+  int nd = 15;    //(good value 6-15)
   int rcobj = 15; //(good value 15)
   int robj = 17;  //(good value 17)
   int mdist = 10; // maximum distance from cluster center (good value 16)
-  int pft = 15;    // points fixation threshold (good value 9)
-  
+  int pft = 15;   // points fixation threshold (good value 9)
+
   float rdet = 50;
-  int minsc = 10;
+  int minsc = 15;
   cv::Mat img;
 
   std::vector<OBJdetect> detects;
@@ -1846,7 +1902,7 @@ cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, c
   }
 
   //--------------</clusters to objects>-------------------
-goto jumpto1;
+  goto jumpto1;
   for (int i = 0; i < objects.size(); i++)
     objects[i].push_track_point(objects[i].claster_center);
 

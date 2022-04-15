@@ -29,7 +29,7 @@
 int extr = 205;        // sidebar size
 int half_imgsize = 80; // area half size for a moving object
 int resolution = 992;  // frame size for model
-int reduseres = 198;   // (good value 198)
+int reduseres = 248;   // (good value 198)
 
 class IMGsamples
 {
@@ -71,7 +71,6 @@ public:
     this->img = img;
     center_determine(true);
     model_center = claster_center;
-    nm = false;
   }
 
   void center_determine(bool samplescreation)

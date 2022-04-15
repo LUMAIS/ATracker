@@ -36,8 +36,8 @@ int main(int argc, char** argv) {
     {
         std::vector<cv::Mat> d_images;
         
-        int start = 134;
-        int nfram = 20;
+        int start = 0;
+        int nfram = 5;
 
         d_images = LoadVideo(argv[2],start,nfram);
 
