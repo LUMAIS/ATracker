@@ -1352,68 +1352,6 @@ void draw_map_prob(std::vector<int> npsamples, std::vector<cv::Point2f> mpoints)
   cv::waitKey(0);
 }
 
-void draw_map_prob_v2 (std::vector<int> npsamples1, std::vector<int> npsamples2, std::vector<cv::Point2f> mpoints)
-{
-   int max = npsamples.at(0);
-  int min = npsamples.at(1);
-  cv::Point2f mpoint;
-
-  for (int i = 0; i < npsamples.size(); i++)
-  {
-    if (max < npsamples.at(i))
-      max = npsamples.at(i);
-
-    if (min > npsamples.at(i))
-    {
-      min = npsamples.at(i);
-      mpoint = mpoints.at(i);
-    }
-  }
-
-  for (int i = 0; i < npsamples.size(); i++)
-    npsamples.at(i) -= min;
-
-  int color_step = (int)((max - min) / (3 * 255));
-
-  cv::Mat imgpmap(2 * half_imgsize, 2 * half_imgsize, CV_8UC3, cv::Scalar(0, 0, 0));
-
-  uint8_t *pixelPtr1 = (uint8_t *)imgpmap.data;
-  int cn = imgpmap.channels();
-  cv::Scalar_<uint8_t> bgrPixel1;
-
-  for (int i = 0; i < npsamples.size(); i++)
-  {
-    int Pcolor = 3 * 255 - (int)(npsamples.at(i) / color_step);
-
-    uint8_t red;
-    uint8_t blue;
-    if (Pcolor < 255)
-    {
-      red = (uint8_t)0;
-      blue = (uint8_t)Pcolor;
-    }
-    else if (Pcolor > 255 && Pcolor < 2 * 255)
-    {
-      red = (uint8_t)(Pcolor - 255);
-      blue = (uint8_t)255;
-    }
-    else
-    {
-      red = (uint8_t)255;
-      blue = (uint8_t)(3 * 255 - Pcolor);
-    }
-
-    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 0] = blue;       // B
-    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 1] = (uint8_t)0; // G
-    pixelPtr1[(size_t)mpoints.at(i).y * imgpmap.cols * cn + (size_t)mpoints.at(i).x * cn + 2] = red;        // R
-  }
-
-  cv::circle(imgpmap, mpoint, 1, cv::Scalar(0, 255, 0), 1);
-  cv::resize(imgpmap, imgpmap, cv::Size(imgpmap.rows * 5, imgpmap.cols * 5), cv::InterpolationFlags::INTER_CUBIC);
-  imshow("imgpmap", imgpmap);
-  cv::waitKey(0);
-}
-
 void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject &obj, int id_frame)
 {
   int wh = 800;
@@ -1554,22 +1492,28 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
   std::vector<int> test_np1;
   std::vector<int> test_np2;
 
+  std::vector<int> complex_test_np;
+
   int testid1 = 0;
   int testid2 = 5;
-
-
 
     for (int i = 0; i < all_npforpoints.size(); i++)
     {
       test_np1.push_back(all_npforpoints.at(i).at(testid1));
       test_np2.push_back(all_npforpoints.at(i).at(testid2));
     }
-      
-    draw_map_prob(test_np1, mpoints);
-    draw_map_prob(test_np2, mpoints);
 
 
-    draw_map_prob_v2(test_np1, test_np2, mpoints)
+    for(int i=0; i<test_np1.size(); i++)
+    {
+      int del = 200;
+      if(test_np2.at(i+del) < test_np2.size())
+        complex_test_np.push_back(test_np1.at(i) + test_np2.at(i+del));
+      else
+        complex_test_np.push_back(test_np1.at(i)*2);
+    }
+
+    draw_map_prob(complex_test_np, mpoints);
 }
 
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector)
