@@ -91,7 +91,7 @@ public:
       claster_center.y = sqrt(powy / claster_points.size());
     }
 
-    if(samplescreation == true)
+    if (samplescreation == true)
     {
       samples_creation();
     }
@@ -110,15 +110,15 @@ public:
       coord.y = claster_points.at(i).y - claster_center.y + half_imgsize;
       coord.x = claster_points.at(i).x - claster_center.x + half_imgsize;
 
-      if (coord.y > 0 && (coord.y + resolution/reduseres) < 2 * half_imgsize && coord.x > 0 && (coord.x + resolution/reduseres) < 2 * half_imgsize)
+      if (coord.y > 0 && (coord.y + resolution / reduseres) < 2 * half_imgsize && coord.x > 0 && (coord.x + resolution / reduseres) < 2 * half_imgsize)
       {
-        sample = img(cv::Range(coord.y, coord.y + resolution/reduseres), cv::Range(coord.x, coord.x + resolution / reduseres));
+        sample = img(cv::Range(coord.y, coord.y + resolution / reduseres), cv::Range(coord.x, coord.x + resolution / reduseres));
         samples.push_back(sample);
         coords.push_back(coord);
       }
     }
-    
-    IMGsamples buf(samples,coords);
+
+    IMGsamples buf(samples, coords);
     moution_samples.push_back(buf);
   }
 
@@ -171,14 +171,19 @@ struct Detection
   int class_idx;
 };
 
+struct topnpmp
+{
+  int npsamples;
+  cv::Point2f mpoint;
+};
+
 void testtorch();
 int testmodule(std::string strpath);
 
 std::vector<cv::Point2f> detectorT(torch::jit::script::Module module, cv::Mat imageBGR, torch::DeviceType device_type);
 std::vector<cv::Mat> LoadVideo(const std::string &paths, uint8_t startframe, uint8_t getframes);
-std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::DeviceType device_type);// latest version with CUDA support
+std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::DeviceType device_type); // latest version with CUDA support
 
 cv::Point2f claster_center(std::vector<cv::Point2f> claster_points);
 cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
-

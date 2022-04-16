@@ -1290,11 +1290,38 @@ cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, c
   return baseimag;
 }
 
-void draw_map_prob(std::vector<int> npsamples, std::vector<cv::Point2f> mpoints)
+
+bool compare(topnpmp a, topnpmp b)
 {
+  if (a.npsamples < b.npsamples)
+    return 1;
+  else
+    return 0;
+}
+
+std::vector<cv::Point2f> draw_map_prob(std::vector<int> npsamples, std::vector<cv::Point2f> mpoints)
+{
+
+  int maxprbp = 10;
+  std::vector<cv::Point2f> probapoints;
+
   int max = npsamples.at(0);
   int min = npsamples.at(1);
+
   cv::Point2f mpoint;
+  std::vector<cv::Point2f>
+
+  std::vector<topnpmp> top;
+  topnpmp bufnpmp;
+
+  for (int i = 0; i < npsamples.size(); i++)
+  {
+    bufnpmp.npsamples = npsamples.at(i);
+    bufnpmp.mpoint = mpoints.at(i);
+    top.push_back(bufnpmp);
+  }
+
+  sort(top.begin(), top.end(), compare);
 
   for (int i = 0; i < npsamples.size(); i++)
   {
@@ -1307,6 +1334,20 @@ void draw_map_prob(std::vector<int> npsamples, std::vector<cv::Point2f> mpoints)
       mpoint = mpoints.at(i);
     }
   }
+
+  cv::Point2f bufmp;
+  int bufnp;
+
+  std::cout << "----------------------" << std::endl;
+  for (int i = 0; i < 10; i++)
+  {
+    std::cout << i << ". " << top.at(i).npsamples << std::endl;
+    std::cout << i << ". " << top.at(i).mpoint << std::endl;
+  }
+
+  std::cout << "min - " << min << std::endl;
+  std::cout << "mpoint.x - " << mpoint.x << std::endl;
+  std::cout << "mpoint.y - " << mpoint.y << std::endl;
 
   for (int i = 0; i < npsamples.size(); i++)
     npsamples.at(i) -= min;
@@ -1347,9 +1388,23 @@ void draw_map_prob(std::vector<int> npsamples, std::vector<cv::Point2f> mpoints)
   }
 
   cv::circle(imgpmap, mpoint, 1, cv::Scalar(0, 255, 0), 1);
+
+  for(int i=0; i<top.size(); i++)
+  {
+    cv::circle(imgpmap, top.at(i).mpoint, 1, cv::Scalar(0, 255, 255), 1);
+
+    int maxprbp = 10;
+    probapoints.push_back(top.at(i).mpoint);
+
+    if(i>maxprbp)
+      break;
+  }
+
   cv::resize(imgpmap, imgpmap, cv::Size(imgpmap.rows * 5, imgpmap.cols * 5), cv::InterpolationFlags::INTER_CUBIC);
   imshow("imgpmap", imgpmap);
   cv::waitKey(0);
+
+  return probapoints;
 }
 
 void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject &obj, int id_frame)
@@ -1491,29 +1546,85 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
   std::vector<int> test_np1;
   std::vector<int> test_np2;
+  std::vector<int> test_np3;
+  std::vector<int> test_np4;
+  std::vector<int> test_np5;
 
   std::vector<int> complex_test_np;
+  std::vector<std::vector<int>> np_all_samples;
 
-  int testid1 = 0;
-  int testid2 = 5;
+  int testid1 = 3;
+  int testid2 = 2;
+  int testid3 = 33;
+  int testid4 = 12;
+  int testid5 = 5;
 
-    for (int i = 0; i < all_npforpoints.size(); i++)
+  cv::Mat resimg = imag;
+
+  cv::Point2f correct;
+
+  correct.x = 0;
+  correct.y = 0;
+
+  for (int i = 0; i < claster_points.size(); i++)
+  {
+    p1.x = claster_points.at(i).x - minp.x;
+    p1.y = claster_points.at(i).y - minp.y;
+    p2.x = claster_points.at(i).x - minp.x + resolution / reduseres;
+    p2.y = claster_points.at(i).y - minp.y + resolution / reduseres;
+
+    p1 += correct;
+    p2 += correct;
+
+    cv::Mat s_imag = claster_samples.at(i);
+    cv::cvtColor(s_imag, s_imag, cv::COLOR_BGR2RGB);
+    s_imag.convertTo(s_imag, CV_8UC3);
+    s_imag.copyTo(resimg(cv::Rect(p1.x, p1.y, resolution / reduseres, resolution / reduseres)));
+    rectangle(resimg, p1, p2, cv::Scalar(0, 255, 0), 1);
+
+    p1.x = p1.x + (resolution / reduseres) / 2;
+    p1.y = p1.y + (resolution / reduseres) / 2;
+
+    if (i == testid1)
+      cv::circle(resimg, p1, 1, cv::Scalar(0, 0, 255), 1);
+    else
     {
-      test_np1.push_back(all_npforpoints.at(i).at(testid1));
-      test_np2.push_back(all_npforpoints.at(i).at(testid2));
+      if (i == testid2 || i == testid3 || i == testid4 || i == testid5)
+        cv::circle(resimg, p1, 1, cv::Scalar(255, 0, 100), 1);
     }
+  }
 
+  cv::resize(resimg, resimg, cv::Size(resimg.cols * 5, resimg.rows * 5), cv::InterpolationFlags::INTER_CUBIC);
+  imshow("resimg", resimg);
+  cv::waitKey(0);
 
-    for(int i=0; i<test_np1.size(); i++)
-    {
-      int del = 200;
-      if(test_np2.at(i+del) < test_np2.size())
-        complex_test_np.push_back(test_np1.at(i) + test_np2.at(i+del));
-      else
-        complex_test_np.push_back(test_np1.at(i)*2);
-    }
+  for (int i = 0; i < all_npforpoints.size(); i++)
+  {
+    // for(int j = 0; j<all_npforpoints.at(i).size(); j++)
+    //   np_all_samples.push_back(all_npforpoints.at(i).at(j));
 
-    draw_map_prob(complex_test_np, mpoints);
+    test_np1.push_back(all_npforpoints.at(i).at(testid1));
+    test_np2.push_back(all_npforpoints.at(i).at(testid2));
+    test_np3.push_back(all_npforpoints.at(i).at(testid3));
+    test_np4.push_back(all_npforpoints.at(i).at(testid4));
+    test_np5.push_back(all_npforpoints.at(i).at(testid5));
+  }
+
+  int del2 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid2).x - minp.x) + (claster_points.at(testid2).y - minp.y);
+  int del3 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid3).x - minp.x) + (claster_points.at(testid3).y - minp.y);
+  int del4 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid4).x - minp.x) + (claster_points.at(testid4).y - minp.y);
+  int del5 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid5).x - minp.x) + (claster_points.at(testid5).y - minp.y);
+
+  complex_test_np.clear();
+
+  for (int i = 0; i < test_np1.size(); i++)
+  {
+
+    int np = test_np1.at(i);
+    complex_test_np.push_back(np);
+  }
+
+  draw_map_prob(complex_test_np, mpoints);
 }
 
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector)
@@ -1553,10 +1664,10 @@ cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, c
   cv::Mat framebuf = frame_resizing(frame);
 
   int mpc = 15;   // minimum number of points for a cluster (good value 15)
-  int nd = 15;    //(good value 6-15)
+  int nd = 9;     //(good value 6-15)
   int rcobj = 15; //(good value 15)
   int robj = 17;  //(good value 17)
-  int mdist = 10; // maximum distance from cluster center (good value 16)
+  int mdist = 15; // maximum distance from cluster center (good value 16)
   int pft = 15;   // points fixation threshold (good value 9)
 
   float rdet = 50;
