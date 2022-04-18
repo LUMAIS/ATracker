@@ -171,11 +171,12 @@ struct Detection
   int class_idx;
 };
 
-struct topnpmp
+struct intpoint
 {
-  int npsamples;
+  int ipoint;
   cv::Point2f mpoint;
 };
+
 
 void testtorch();
 int testmodule(std::string strpath);

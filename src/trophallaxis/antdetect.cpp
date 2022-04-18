@@ -1290,10 +1290,9 @@ cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, c
   return baseimag;
 }
 
-
-bool compare(topnpmp a, topnpmp b)
+bool compare(intpoint a, intpoint b)
 {
-  if (a.npsamples < b.npsamples)
+  if (a.ipoint < b.ipoint)
     return 1;
   else
     return 0;
@@ -1301,22 +1300,23 @@ bool compare(topnpmp a, topnpmp b)
 
 std::vector<cv::Point2f> draw_map_prob(std::vector<int> npsamples, std::vector<cv::Point2f> mpoints)
 {
+  int maxprbp = 9;
 
-  int maxprbp = 10;
+  maxprbp = 0;
+
   std::vector<cv::Point2f> probapoints;
 
   int max = npsamples.at(0);
   int min = npsamples.at(1);
 
   cv::Point2f mpoint;
-  std::vector<cv::Point2f>
 
-  std::vector<topnpmp> top;
-  topnpmp bufnpmp;
+  std::vector<intpoint> top;
+  intpoint bufnpmp;
 
   for (int i = 0; i < npsamples.size(); i++)
   {
-    bufnpmp.npsamples = npsamples.at(i);
+    bufnpmp.ipoint = npsamples.at(i);
     bufnpmp.mpoint = mpoints.at(i);
     top.push_back(bufnpmp);
   }
@@ -1338,16 +1338,17 @@ std::vector<cv::Point2f> draw_map_prob(std::vector<int> npsamples, std::vector<c
   cv::Point2f bufmp;
   int bufnp;
 
-  std::cout << "----------------------" << std::endl;
+  /*std::cout << "----------------------" << std::endl;
   for (int i = 0; i < 10; i++)
   {
-    std::cout << i << ". " << top.at(i).npsamples << std::endl;
+    std::cout << i << ". " << top.at(i).ipoint << std::endl;
     std::cout << i << ". " << top.at(i).mpoint << std::endl;
   }
 
   std::cout << "min - " << min << std::endl;
   std::cout << "mpoint.x - " << mpoint.x << std::endl;
   std::cout << "mpoint.y - " << mpoint.y << std::endl;
+  */
 
   for (int i = 0; i < npsamples.size(); i++)
     npsamples.at(i) -= min;
@@ -1389,15 +1390,15 @@ std::vector<cv::Point2f> draw_map_prob(std::vector<int> npsamples, std::vector<c
 
   cv::circle(imgpmap, mpoint, 1, cv::Scalar(0, 255, 0), 1);
 
-  for(int i=0; i<top.size(); i++)
+  for (int i = 0; i < top.size(); i++)
   {
+
+    if (i >= maxprbp)
+      break;
+
     cv::circle(imgpmap, top.at(i).mpoint, 1, cv::Scalar(0, 255, 255), 1);
 
-    int maxprbp = 10;
     probapoints.push_back(top.at(i).mpoint);
-
-    if(i>maxprbp)
-      break;
   }
 
   cv::resize(imgpmap, imgpmap, cv::Size(imgpmap.rows * 5, imgpmap.cols * 5), cv::InterpolationFlags::INTER_CUBIC);
@@ -1431,8 +1432,6 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
   std::vector<std::vector<int>> all_npforpoints;
 
-  std::cout << "claster_points.size() = " << claster_points.size() << std::endl;
-
   for (int i = 0; i < claster_points.size(); i++)
   {
     if (claster_points.at(i).y < minp.y)
@@ -1463,14 +1462,12 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
   int and_y = (int)((imag.rows - resolution / reduseres) / st);
   int and_x = (int)((imag.cols - resolution / reduseres) / st);
 
-  int test = 8;
-
   for (int step_x = start_x; step_x < and_x; step_x++)
   {
     for (int step_y = start_y; step_y < and_y; step_y++)
     {
-      int np = 0;
-      int ns = 0;
+      // int np = 0;
+      // int ns = 0;
 
       // cv::Mat resimg(maxp.y - minp.y + resolution / reduseres, maxp.x - minp.x + resolution / reduseres, CV_8UC3, cv::Scalar(0, 0, 50));
 
@@ -1506,8 +1503,8 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
         sample = imag(cv::Range(step_y * st, step_y * st + resolution / reduseres), cv::Range(step_x * st, step_x * st + resolution / reduseres));
         int npbuf = samples_compV2(claster_samples.at(i), sample);
         npforpoints.at(i) = npbuf;
-        np += npbuf; // sample compare
-        ns++;
+        // np += npbuf; // sample compare
+        // ns++;
       }
 
       // np = (int)(np*npforpoints.at(test));
@@ -1537,94 +1534,171 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
       if (bufp.y > 0 && bufp.y < imag.rows && bufp.x > 0 && bufp.x < imag.cols)
       {
-        npsamples.push_back(np);
+        // npsamples.push_back(np);
         mpoints.push_back(bufp);
         all_npforpoints.push_back(npforpoints);
       }
     }
   }
 
-  std::vector<int> test_np1;
-  std::vector<int> test_np2;
-  std::vector<int> test_np3;
-  std::vector<int> test_np4;
-  std::vector<int> test_np5;
+  std::vector<int> sample_np;
+  std::vector<std::vector<cv::Point2f>> alt_claster_points;
 
-  std::vector<int> complex_test_np;
-  std::vector<std::vector<int>> np_all_samples;
+  std::vector<intpoint> chain;
+  std::vector<std::vector<intpoint>> chains;
 
-  int testid1 = 3;
-  int testid2 = 2;
-  int testid3 = 33;
-  int testid4 = 12;
-  int testid5 = 5;
-
-  cv::Mat resimg = imag;
-
-  cv::Point2f correct;
-
-  correct.x = 0;
-  correct.y = 0;
-
-  for (int i = 0; i < claster_points.size(); i++)
+  std::cout << "claster_points.size() - " << claster_points.size() << std::endl;
+  for (int ci = 0; ci < claster_points.size(); ci++)
   {
-    p1.x = claster_points.at(i).x - minp.x;
-    p1.y = claster_points.at(i).y - minp.y;
-    p2.x = claster_points.at(i).x - minp.x + resolution / reduseres;
-    p2.y = claster_points.at(i).y - minp.y + resolution / reduseres;
+    /*/------------------<TESTING>-----------------------------------
+    cv::Mat resimg = imag;
+    cv::Point2f correct;
 
-    p1 += correct;
-    p2 += correct;
+    correct.x = 0;
+    correct.y = 0;
 
-    cv::Mat s_imag = claster_samples.at(i);
-    cv::cvtColor(s_imag, s_imag, cv::COLOR_BGR2RGB);
-    s_imag.convertTo(s_imag, CV_8UC3);
-    s_imag.copyTo(resimg(cv::Rect(p1.x, p1.y, resolution / reduseres, resolution / reduseres)));
-    rectangle(resimg, p1, p2, cv::Scalar(0, 255, 0), 1);
-
-    p1.x = p1.x + (resolution / reduseres) / 2;
-    p1.y = p1.y + (resolution / reduseres) / 2;
-
-    if (i == testid1)
-      cv::circle(resimg, p1, 1, cv::Scalar(0, 0, 255), 1);
-    else
+    for (int i = 0; i < claster_points.size(); i++)
     {
-      if (i == testid2 || i == testid3 || i == testid4 || i == testid5)
-        cv::circle(resimg, p1, 1, cv::Scalar(255, 0, 100), 1);
+      p1.x = claster_points.at(i).x - minp.x;
+      p1.y = claster_points.at(i).y - minp.y;
+      p2.x = claster_points.at(i).x - minp.x + resolution / reduseres;
+      p2.y = claster_points.at(i).y - minp.y + resolution / reduseres;
+
+      p1 += correct;
+      p2 += correct;
+
+      cv::Mat s_imag = claster_samples.at(i);
+      cv::cvtColor(s_imag, s_imag, cv::COLOR_BGR2RGB);
+      s_imag.convertTo(s_imag, CV_8UC3);
+      s_imag.copyTo(resimg(cv::Rect(p1.x, p1.y, resolution / reduseres, resolution / reduseres)));
+      rectangle(resimg, p1, p2, cv::Scalar(0, 255, 0), 1);
+
+
+      p1.x = p1.x + (resolution / reduseres) / 2;
+      p1.y = p1.y + (resolution / reduseres) / 2;
+
+      if (i == ci)
+        cv::circle(resimg, p1, 1, cv::Scalar(0, 0, 255), 1);
+    }
+
+    cv::resize(resimg, resimg, cv::Size(resimg.cols * 5, resimg.rows * 5), cv::InterpolationFlags::INTER_CUBIC);
+    imshow("resimg", resimg);
+    cv::waitKey(0);
+
+    //------------------</TESTING>-----------------------------------*/
+
+    sample_np.clear();
+    for (int i = 0; i < all_npforpoints.size(); i++)
+      sample_np.push_back(all_npforpoints.at(i).at(ci));
+
+    alt_claster_points.push_back(draw_map_prob(sample_np, mpoints));
+  }
+
+  int half_range = 8;
+
+  for (int i = 0; i < alt_claster_points.size(); i++)
+  {
+    for (int ci = 0; ci < alt_claster_points.at(i).size(); ci++)
+    {
+      chain.clear();
+      intpoint bufch;
+      bufch.ipoint = i;
+      bufch.mpoint = alt_claster_points.at(i).at(ci);
+      chain.push_back(bufch);
+
+      for (int j = i + 1; j < alt_claster_points.size(); j++)
+      {
+        cv::Point2f dp;
+        dp.x = claster_points.at(i).x - claster_points.at(j).x;
+        dp.y = claster_points.at(i).y - claster_points.at(j).y;
+
+        for (int cj = 0; cj < alt_claster_points.at(j).size(); cj++)
+        {
+          if (abs(alt_claster_points.at(i).at(ci).x - alt_claster_points.at(j).at(cj).x - dp.x) < half_range && abs(alt_claster_points.at(i).at(ci).y - alt_claster_points.at(j).at(cj).y - dp.y) == 1)
+          {
+            bufch.ipoint = j;
+            bufch.mpoint = alt_claster_points.at(j).at(cj);
+            chain.push_back(bufch);
+            break;
+          }
+        }
+      }
+      chains.push_back(chain);
     }
   }
 
-  cv::resize(resimg, resimg, cv::Size(resimg.cols * 5, resimg.rows * 5), cv::InterpolationFlags::INTER_CUBIC);
-  imshow("resimg", resimg);
+  int maxchains = 0;
+  for (int i = 0; i < chains.size(); i++)
+  {
+    if (maxchains < chains.at(i).size())
+      maxchains = i;
+  }
+
+  // maxchains = 0;
+  cv::Mat resimg = imag;
+  cv::Mat resimg2(resimg.rows, resimg.cols, CV_8UC3, cv::Scalar(0, 0, 0));
+
+  cv::Mat res2x(resimg.rows, resimg.cols * 2, CV_8UC3, cv::Scalar(0, 0, 0));
+
+  p1.y = minp.y + (maxp.y - minp.y) / 2 - half_imgsize;
+  p1.x = minp.x + (maxp.x - minp.x) / 2 - half_imgsize;
+
+  p2.y = minp.y + (maxp.y - minp.y) / 2 + half_imgsize;
+  p2.x = minp.x + (maxp.x - minp.x) / 2 + half_imgsize;
+
+  bufimg = frame(cv::Range(p1.y, p2.y), cv::Range(p1.x, p2.x));
+
+  cv::cvtColor(bufimg, bufimg, cv::COLOR_BGR2RGB);
+  bufimg.convertTo(bufimg, CV_8UC3);
+  bufimg.copyTo(resimg2(cv::Rect(0, 0, bufimg.cols, bufimg.rows)));
+
+  for (int i = 0; i < claster_points.size(); i++)
+  {
+    std::cout << "p1.x - " << p1.x <<std::endl;
+    p1.x = claster_points.at(i).x - minp.x - (maxp.x - minp.x) / 2 + half_imgsize;
+    p1.y = claster_points.at(i).y - minp.y - (maxp.y - minp.y) / 2 + half_imgsize;
+    p2.x = p1.x + resolution / reduseres;
+    p2.y = p1.y + resolution / reduseres;
+
+    rectangle(resimg2, p1, p2, cv::Scalar(0, 0, 255), 1);
+  }
+
+  for (int i = 0; i < chains.at(maxchains).size(); i++)
+  {
+
+    size_t R = rand() % 255;
+    size_t G = rand() % 255;
+    size_t B = rand() % 255;
+
+    //std::cout << "chains.at(" << maxchains << ").at(" << i << ").mpoint - " << chains.at(maxchains).at(i).mpoint << std::endl;
+    //std::cout << "chains.at(" << maxchains << ").at(" << i << ").ipoint - " << chains.at(maxchains).at(i).ipoint << std::endl;
+    //std::cout << "------------------------------" << std::endl;
+
+    p1.x = chains.at(maxchains).at(i).mpoint.x;
+    p1.y = chains.at(maxchains).at(i).mpoint.y;
+    p2.x = p1.x + resolution / reduseres;
+    p2.y = p1.y + resolution / reduseres;
+
+    rectangle(resimg, p1, p2, cv::Scalar(R, G, B), 1);
+
+    p1.x = claster_points.at(chains.at(maxchains).at(i).ipoint).x - minp.x - (maxp.x - minp.x) / 2 + half_imgsize;
+    p1.y = claster_points.at(chains.at(maxchains).at(i).ipoint).y - minp.y - (maxp.y - minp.y) / 2 + half_imgsize;
+    p2.x = p1.x + resolution / reduseres;
+    p2.y = p1.y + resolution / reduseres;
+
+    rectangle(resimg2, p1, p2, cv::Scalar(R, G, B), 1);
+  }
+
+  
+
+  resimg2.copyTo(res2x(cv::Rect(0, 0, resimg2.cols, resimg2.rows)));
+
+  resimg.copyTo(res2x(cv::Rect(resimg2.cols, 0, resimg2.cols, resimg2.rows)));
+
+  cv::resize(res2x, res2x, cv::Size(res2x.cols * 5, res2x.rows * 5), cv::InterpolationFlags::INTER_CUBIC);
+
+  imshow("res2x", res2x);
   cv::waitKey(0);
-
-  for (int i = 0; i < all_npforpoints.size(); i++)
-  {
-    // for(int j = 0; j<all_npforpoints.at(i).size(); j++)
-    //   np_all_samples.push_back(all_npforpoints.at(i).at(j));
-
-    test_np1.push_back(all_npforpoints.at(i).at(testid1));
-    test_np2.push_back(all_npforpoints.at(i).at(testid2));
-    test_np3.push_back(all_npforpoints.at(i).at(testid3));
-    test_np4.push_back(all_npforpoints.at(i).at(testid4));
-    test_np5.push_back(all_npforpoints.at(i).at(testid5));
-  }
-
-  int del2 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid2).x - minp.x) + (claster_points.at(testid2).y - minp.y);
-  int del3 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid3).x - minp.x) + (claster_points.at(testid3).y - minp.y);
-  int del4 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid4).x - minp.x) + (claster_points.at(testid4).y - minp.y);
-  int del5 = (2 * (half_imgsize - resolution / reduseres / 2) - 1) * (claster_points.at(testid5).x - minp.x) + (claster_points.at(testid5).y - minp.y);
-
-  complex_test_np.clear();
-
-  for (int i = 0; i < test_np1.size(); i++)
-  {
-
-    int np = test_np1.at(i);
-    complex_test_np.push_back(np);
-  }
-
-  draw_map_prob(complex_test_np, mpoints);
 }
 
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector)
