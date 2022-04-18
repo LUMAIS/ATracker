@@ -177,6 +177,20 @@ struct intpoint
   cv::Point2f mpoint;
 };
 
+struct IdFix {
+  uint8_t  type;
+  uint16_t  idOld;
+  uint16_t  id;
+}
+
+struct Obj {
+  uint8_t  type;   // Object type
+  uint16_t  id;  // Object id
+  uint16_t  x;  // Center x of the bounding box
+  uint16_t  y;  // Center y of the bounding box
+  uint16_t  w;  // Width of the bounding box
+  uint16_t  h;  // Height of the bounding box
+}
 
 void testtorch();
 int testmodule(std::string strpath);
@@ -188,3 +202,5 @@ std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::D
 cv::Point2f claster_center(std::vector<cv::Point2f> claster_points);
 cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
+
+void fixIDs(const vector<vector<Obj>>&objs, vector<pair<frame:uint,idFix:IdFix>>&fixedIds, string path_to_video)

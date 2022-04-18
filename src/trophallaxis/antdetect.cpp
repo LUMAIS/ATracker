@@ -1290,6 +1290,409 @@ cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, c
   return baseimag;
 }
 
+cv::Mat DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame)
+{
+  std::vector<std::vector<cv::Point2f>> clasters;
+  std::vector<cv::Point2f> motion;
+  std::vector<cv::Mat> imgs;
+
+  cv::Mat imageBGR0;
+  cv::Mat imageBGR;
+
+  cv::Mat imag;
+  cv::Mat imagbuf;
+  cv::Mat framebuf = frame;
+
+  int mpc = 15;   // minimum number of points for a cluster (good value 15)
+  int nd = 9;     //(good value 6-15)
+  int rcobj = 17; //(good value 15)
+  int robj = 17;  //(good value 17)
+  int mdist = 10; // maximum distance from cluster center (good value 10)
+  int pft = 9;    // points fixation threshold (good value 9)
+
+  cv::Mat img;
+
+  //--------------------<moution detections>--------------------
+  int rows = frame.rows;
+  int cols = frame.cols;
+
+  float rwsize;
+  float clsize;
+
+  imagbuf = frame;
+  if (rows > cols)
+  {
+    rwsize = resolution * rows * 1.0 / cols;
+    clsize = resolution;
+  }
+  else
+  {
+    rwsize = resolution;
+    clsize = resolution * cols * 1.0 / rows;
+  }
+
+  cv::resize(imagbuf, imagbuf, cv::Size(clsize, rwsize), cv::InterpolationFlags::INTER_CUBIC);
+  cv::Rect rectb(0, 0, resolution, resolution);
+  imag = imagbuf(rectb);
+
+  cv::cvtColor(imag, imag, cv::COLOR_BGR2RGB);
+  imag.convertTo(imag, CV_8UC3);
+
+  if (rows > cols)
+  {
+    rwsize = reduseres * rows * 1.0 / cols;
+    clsize = reduseres;
+  }
+  else
+  {
+    rwsize = reduseres;
+    clsize = reduseres * cols * 1.0 / rows;
+  }
+
+  cv::resize(frame0, frame0, cv::Size(clsize, rwsize), cv::InterpolationFlags::INTER_CUBIC);
+  cv::Rect rect0(0, 0, reduseres, reduseres);
+  imageBGR0 = frame0(rect0);
+  imageBGR0.convertTo(imageBGR0, CV_8UC1);
+
+  cv::resize(frame, frame, cv::Size(clsize, rwsize), cv::InterpolationFlags::INTER_CUBIC);
+
+  cv::Rect rect(0, 0, reduseres, reduseres);
+  imageBGR = frame(rect);
+
+  imageBGR.convertTo(imageBGR, CV_8UC1);
+
+  cv::Point2f pm;
+
+  for (int y = 0; y < imageBGR0.rows; y++)
+  {
+    for (int x = 0; x < imageBGR0.cols; x++)
+    {
+      uchar color1 = imageBGR0.at<uchar>(cv::Point(x, y));
+      uchar color2 = imageBGR.at<uchar>(cv::Point(x, y));
+
+      if (((int)color2 - (int)color1) > pft)
+      {
+        pm.x = x * resolution / reduseres;
+        pm.y = y * resolution / reduseres;
+        motion.push_back(pm);
+      }
+    }
+  }
+
+  cv::Point2f pt1;
+  cv::Point2f pt2;
+
+  for (int i = 0; i < motion.size(); i++) // visualization of the claster_points
+  {
+    pt1.x = motion.at(i).x;
+    pt1.y = motion.at(i).y;
+
+    pt2.x = motion.at(i).x + resolution / reduseres;
+    pt2.y = motion.at(i).y + resolution / reduseres;
+
+    rectangle(imag, pt1, pt2, cv::Scalar(255, 255, 255), 1);
+  }
+
+  uint16_t ncls = 0;
+  uint16_t nobj;
+
+  if (objects.size() > 0)
+    nobj = 0;
+  else
+    nobj = -1;
+  //--------------</moution detections>--------------------
+
+  //--------------<layout of motion points by objects>-----
+
+  if (objects.size() > 0)
+  {
+    for (int i = 0; i < objects.size(); i++)
+    {
+      objects[i].claster_points.clear();
+    }
+
+    for (int i = 0; i < motion.size(); i++)
+    {
+      for (int j = 0; j < objects.size(); j++)
+      {
+        if (objects[j].model_center.x < 0)
+          continue;
+
+        if (i < 0)
+          break;
+
+        if ((motion.at(i).x < (objects[j].model_center.x + objects[j].rectangle.x / 2)) && (motion.at(i).x > (objects[j].model_center.x - objects[j].rectangle.x / 2)) && (motion.at(i).y < (objects[j].model_center.y + objects[j].rectangle.y / 2)) && (motion.at(i).y > (objects[j].model_center.y - objects[j].rectangle.y / 2)))
+        {
+          objects[j].claster_points.push_back(motion.at(i));
+          motion.erase(motion.begin() + i);
+          i--;
+        }
+      }
+    }
+
+    float rm = rcobj * 1.0 * resolution / reduseres;
+
+    for (int i = 0; i < motion.size(); i++)
+    {
+      rm = sqrt(pow((objects[0].claster_center.x - motion.at(i).x), 2) + pow((objects[0].claster_center.y - motion.at(i).y), 2));
+
+      int n = -1;
+      if (rm < rcobj * 1.0 * resolution / reduseres)
+        n = 0;
+
+      for (int j = 1; j < objects.size(); j++)
+      {
+        float r = sqrt(pow((objects[j].claster_center.x - motion.at(i).x), 2) + pow((objects[j].claster_center.y - motion.at(i).y), 2));
+        if (r < rcobj * 1.0 * resolution / reduseres && r < rm)
+        {
+          rm = r;
+          n = j;
+        }
+      }
+
+      if (n > -1)
+      {
+        objects[n].claster_points.push_back(motion.at(i));
+        motion.erase(motion.begin() + i);
+        i--;
+        objects[n].center_determine(false);
+        if (i < 0)
+          break;
+      }
+    }
+  }
+
+  for (int j = 0; j < objects.size(); j++)
+  {
+
+    objects[j].center_determine(false);
+
+    cv::Point2f clastercenter = objects[j].claster_center;
+
+    imagbuf = frame_resizing(framebuf);
+    imagbuf.convertTo(imagbuf, CV_8UC3);
+
+    if (clastercenter.y - half_imgsize < 0)
+      clastercenter.y = half_imgsize + 1;
+
+    if (clastercenter.x - half_imgsize < 0)
+      clastercenter.x = half_imgsize + 1;
+
+    if (clastercenter.y + half_imgsize > imagbuf.rows)
+      clastercenter.y = imagbuf.rows - 1;
+
+    if (clastercenter.x + half_imgsize > imagbuf.cols)
+      clastercenter.x = imagbuf.cols - 1;
+
+    img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
+    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+    img.convertTo(img, CV_8UC3);
+    objects[j].img = img;
+    objects[j].samples_creation();
+  }
+  //--------------</layout of motion points by objects>----
+
+  //--------------<claster creation>-----------------------
+
+  while (motion.size() > 0)
+  {
+    cv::Point2f pc;
+
+    if (nobj > -1 && nobj < objects.size())
+    {
+      pc = objects[nobj].claster_center;
+      // pc = objects[nobj].proposed_center();
+      nobj++;
+    }
+    else
+    {
+      pc = motion.at(0);
+      motion.erase(motion.begin());
+    }
+
+    clasters.push_back(std::vector<cv::Point2f>());
+    clasters[ncls].push_back(pc);
+
+    for (int i = 0; i < motion.size(); i++)
+    {
+      float r = sqrt(pow((pc.x - motion.at(i).x), 2) + pow((pc.y - motion.at(i).y), 2));
+      if (r < nd * 1.0 * resolution / reduseres)
+      {
+        cv::Point2f cl_c = claster_center(clasters.at(ncls));
+        r = sqrt(pow((cl_c.x - motion.at(i).x), 2) + pow((cl_c.y - motion.at(i).y), 2));
+        if (r < mdist * 1.0 * resolution / reduseres)
+        {
+          clasters.at(ncls).push_back(motion.at(i));
+          motion.erase(motion.begin() + i);
+          i--;
+        }
+      }
+    }
+
+    int newp;
+    do
+    {
+      newp = 0;
+
+      for (int c = 0; c < clasters[ncls].size(); c++)
+      {
+        pc = clasters[ncls].at(c);
+        for (int i = 0; i < motion.size(); i++)
+        {
+          float r = sqrt(pow((pc.x - motion.at(i).x), 2) + pow((pc.y - motion.at(i).y), 2));
+
+          if (r < nd * 1.0 * resolution / reduseres)
+          {
+            cv::Point2f cl_c = claster_center(clasters.at(ncls));
+            r = sqrt(pow((cl_c.x - motion.at(i).x), 2) + pow((cl_c.y - motion.at(i).y), 2));
+            if (r < mdist * 1.0 * resolution / reduseres)
+            {
+              clasters.at(ncls).push_back(motion.at(i));
+              motion.erase(motion.begin() + i);
+              i--;
+              newp++;
+            }
+          }
+        }
+      }
+    } while (newp > 0 && motion.size() > 0);
+
+    ncls++;
+  }
+  //--------------</claster creation>----------------------
+
+  //--------------<clusters to objects>--------------------
+  for (int cls = 0; cls < ncls; cls++)
+  {
+    if (clasters[cls].size() > mpc) // if there are enough moving points
+    {
+
+      cv::Point2f clastercenter = claster_center(clasters[cls]);
+      imagbuf = frame_resizing(framebuf);
+      imagbuf.convertTo(imagbuf, CV_8UC3);
+      img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
+      cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+      img.convertTo(img, CV_8UC3);
+
+      ALObject obj(objects.size(), "a", clasters[cls], img);
+      bool newobj = true;
+
+      for (int i = 0; i < objects.size(); i++)
+      {
+        float r = sqrt(pow((objects[i].claster_center.x - obj.claster_center.x), 2) + pow((objects[i].claster_center.y - obj.claster_center.y), 2));
+        // float r = sqrt(pow((objects[i].proposed_center().x - obj.claster_center.x), 2) + pow((objects[i].proposed_center().y - obj.claster_center.y), 2));
+        if (r < robj * 1.0 * resolution / reduseres)
+        {
+          newobj = false;
+
+          objects[i].img = obj.img;
+          objects[i].claster_points = obj.claster_points;
+          objects[i].center_determine(true);
+          break;
+        }
+      }
+
+      if (newobj == true)
+        objects.push_back(obj);
+    }
+  }
+  //--------------</clusters to objects>-------------------
+
+  for (int i = 0; i < objects.size(); i++)
+    objects[i].push_track_point(objects[i].claster_center);
+
+  //--------------<visualization>--------------------------
+  for (int i = 0; i < objects.size(); i++)
+  {
+    for (int j = 0; j < objects.at(i).claster_points.size(); j++) // visualization of the claster_points
+    {
+      pt1.x = objects.at(i).claster_points.at(j).x;
+      pt1.y = objects.at(i).claster_points.at(j).y;
+
+      pt2.x = objects.at(i).claster_points.at(j).x + resolution / reduseres;
+      pt2.y = objects.at(i).claster_points.at(j).y + resolution / reduseres;
+
+      rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+    }
+
+    if (objects.at(i).model_center.x > -1) // visualization of the classifier
+    {
+      pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
+      pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;
+
+      pt2.x = objects.at(i).model_center.x + objects.at(i).rectangle.x / 2;
+      pt2.y = objects.at(i).model_center.y + objects.at(i).rectangle.y / 2;
+
+      rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+    }
+
+    for (int j = 0; j < objects.at(i).track_points.size(); j++)
+      cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
+  }
+  //--------------</visualization>-------------------------
+
+  //--------------<baseimag>-------------------------------
+  cv::Mat baseimag(resolution, resolution + extr, CV_8UC3, cv::Scalar(0, 0, 0));
+
+  for (int i = 0; i < objects.size(); i++)
+  {
+    std::string text = objects.at(i).obj_type + " ID" + std::to_string(objects.at(i).id);
+
+    cv::Point2f ptext;
+    ptext.x = 20;
+    ptext.y = (30 + objects.at(i).img.cols) * objects.at(i).id + 20;
+
+    cv::putText(baseimag, // target image
+                text,     // text
+                ptext,    // top-left position
+                1,
+                1,
+                class_name_color[objects.at(i).id], // font color
+                1);
+
+    pt1.x = ptext.x - 1;
+    pt1.y = ptext.y - 1 + 10;
+
+    pt2.x = ptext.x + objects.at(i).img.cols + 1;
+    pt2.y = ptext.y + objects.at(i).img.rows + 1 + 10;
+
+    if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
+    {
+      rectangle(baseimag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+      objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
+    }
+  }
+
+  imag.copyTo(baseimag(cv::Rect(extr, 0, imag.cols, imag.rows)));
+
+  cv::Point2f p_idframe;
+  p_idframe.x = resolution + extr - 95;
+  p_idframe.y = 50;
+  cv::putText(baseimag, std::to_string(id_frame), p_idframe, 1, 3, cv::Scalar(255, 255, 255), 2);
+  cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
+  //--------------</baseimag>-------------------------------
+
+  imshow("Motion", baseimag);
+  cv::waitKey(10);
+
+  return baseimag;
+}
+
+void fixIDs(const vector<vector<Obj>> &objs, vector<pair<frame : uint, idFix : IdFix>> &fixedIds, string path_to_video)
+{
+  std::vector<cv::Mat> d_images;
+
+  int start = 0;
+  int nfram = 5;
+
+  d_images = LoadVideo(path_to_video, start, nfram);
+
+  for (int i = 0; i < d_images.size() - 1; i++)
+  {
+    DetectorMotionV2b(d_images.at(i), d_images.at(i + 1), objects, start + i);
+  }
+}
+
 bool compare(intpoint a, intpoint b)
 {
   if (a.ipoint < b.ipoint)
@@ -1654,7 +2057,7 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
   for (int i = 0; i < claster_points.size(); i++)
   {
-    std::cout << "p1.x - " << p1.x <<std::endl;
+    std::cout << "p1.x - " << p1.x << std::endl;
     p1.x = claster_points.at(i).x - minp.x - (maxp.x - minp.x) / 2 + half_imgsize;
     p1.y = claster_points.at(i).y - minp.y - (maxp.y - minp.y) / 2 + half_imgsize;
     p2.x = p1.x + resolution / reduseres;
@@ -1670,9 +2073,9 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
     size_t G = rand() % 255;
     size_t B = rand() % 255;
 
-    //std::cout << "chains.at(" << maxchains << ").at(" << i << ").mpoint - " << chains.at(maxchains).at(i).mpoint << std::endl;
-    //std::cout << "chains.at(" << maxchains << ").at(" << i << ").ipoint - " << chains.at(maxchains).at(i).ipoint << std::endl;
-    //std::cout << "------------------------------" << std::endl;
+    // std::cout << "chains.at(" << maxchains << ").at(" << i << ").mpoint - " << chains.at(maxchains).at(i).mpoint << std::endl;
+    // std::cout << "chains.at(" << maxchains << ").at(" << i << ").ipoint - " << chains.at(maxchains).at(i).ipoint << std::endl;
+    // std::cout << "------------------------------" << std::endl;
 
     p1.x = chains.at(maxchains).at(i).mpoint.x;
     p1.y = chains.at(maxchains).at(i).mpoint.y;
@@ -1688,8 +2091,6 @@ void objdeterm(std::vector<cv::Point2f> claster_points, cv::Mat frame, ALObject 
 
     rectangle(resimg2, p1, p2, cv::Scalar(R, G, B), 1);
   }
-
-  
 
   resimg2.copyTo(res2x(cv::Rect(0, 0, resimg2.cols, resimg2.rows)));
 
