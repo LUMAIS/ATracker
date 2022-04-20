@@ -17,6 +17,7 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include <utility> 
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -29,7 +30,9 @@
 int extr = 205;        // sidebar size
 int half_imgsize = 80; // area half size for a moving object
 int resolution = 992;  // frame size for model
-int reduseres = 248;   // (good value 198)
+int reduseres = 192;   // (good value 248)
+
+std::string class_name[9] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};
 
 class IMGsamples
 {
@@ -177,20 +180,20 @@ struct intpoint
   cv::Point2f mpoint;
 };
 
-struct IdFix {
+struct idFix {
   uint8_t  type;
   uint16_t  idOld;
   uint16_t  id;
 }
-
+;
 struct Obj {
-  uint8_t  type;   // Object type
+  uint8_t  type;  // Object type
   uint16_t  id;  // Object id
   uint16_t  x;  // Center x of the bounding box
   uint16_t  y;  // Center y of the bounding box
   uint16_t  w;  // Width of the bounding box
   uint16_t  h;  // Height of the bounding box
-}
+};
 
 void testtorch();
 int testmodule(std::string strpath);
@@ -201,6 +204,10 @@ std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::D
 
 cv::Point2f claster_center(std::vector<cv::Point2f> claster_points);
 cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
+void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame);
+
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
 
-void fixIDs(const vector<vector<Obj>>&objs, vector<pair<frame:uint,idFix:IdFix>>&fixedIds, string path_to_video)
+void fixIDs(const std::vector<std::vector<Obj>>&objs, std::vector<std::pair<uint,idFix>>&fixedIds, std::vector<cv::Mat> d_images);
+
+void OBJdetectsToObjs(std::vector<OBJdetect> objdetects,std::vector<Obj> &objs);

@@ -163,7 +163,6 @@ std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::D
   std::vector<cv::Point2f> detectsCent;
   std::vector<cv::Point2f> detectsRect;
   std::vector<uint8_t> Objtype;
-  std::string class_name[9] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};
 
   cv::Scalar class_name_color[9] = {cv::Scalar(255, 0, 0), cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 255), cv::Scalar(0, 255, 255), cv::Scalar(255, 255, 0), cv::Scalar(255, 255, 255), cv::Scalar(200, 0, 200), cv::Scalar(100, 0, 255)};
   cv::Mat imageBGR;
@@ -1290,8 +1289,31 @@ cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, c
   return baseimag;
 }
 
-cv::Mat DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame)
+void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame)
 {
+  cv::Scalar class_name_color[20] = {
+      cv::Scalar(255, 0, 0),
+      cv::Scalar(0, 20, 200),
+      cv::Scalar(0, 255, 0),
+      cv::Scalar(255, 0, 255),
+      cv::Scalar(0, 255, 255),
+      cv::Scalar(255, 255, 0),
+      cv::Scalar(255, 255, 255),
+      cv::Scalar(200, 0, 200),
+      cv::Scalar(100, 0, 255),
+      cv::Scalar(255, 0, 100),
+      cv::Scalar(30, 20, 200),
+      cv::Scalar(25, 255, 0),
+      cv::Scalar(255, 44, 255),
+      cv::Scalar(88, 255, 255),
+      cv::Scalar(255, 255, 39),
+      cv::Scalar(255, 255, 255),
+      cv::Scalar(200, 46, 200),
+      cv::Scalar(100, 79, 255),
+      cv::Scalar(200, 46, 150),
+      cv::Scalar(140, 70, 205),
+  };
+
   std::vector<std::vector<cv::Point2f>> clasters;
   std::vector<cv::Point2f> motion;
   std::vector<cv::Mat> imgs;
@@ -1305,9 +1327,9 @@ cv::Mat DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &
 
   int mpc = 15;   // minimum number of points for a cluster (good value 15)
   int nd = 9;     //(good value 6-15)
-  int rcobj = 17; //(good value 15)
+  int rcobj = 15; //(good value 15)
   int robj = 17;  //(good value 17)
-  int mdist = 10; // maximum distance from cluster center (good value 10)
+  int mdist = 12; // maximum distance from cluster center (good value 10)
   int pft = 9;    // points fixation threshold (good value 9)
 
   cv::Mat img;
@@ -1671,26 +1693,119 @@ cv::Mat DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &
   cv::putText(baseimag, std::to_string(id_frame), p_idframe, 1, 3, cv::Scalar(255, 255, 255), 2);
   cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
   //--------------</baseimag>-------------------------------
-
-  imshow("Motion", baseimag);
-  cv::waitKey(10);
-
-  return baseimag;
+  //imshow("Motion", baseimag);
+  //cv::waitKey(0);
 }
 
-void fixIDs(const vector<vector<Obj>> &objs, vector<pair<frame : uint, idFix : IdFix>> &fixedIds, string path_to_video)
+void OBJdetectsToObjs(std::vector<OBJdetect> objdetects, std::vector<Obj> &objs)
 {
-  std::vector<cv::Mat> d_images;
+  objs.clear();
+  Obj objbuf;
+  for (int i = 0; i < objdetects.size(); i++)
+  {
+    int j=0;
+    for(j=0; j < sizeof(class_name)/sizeof(*class_name); j++)
+      if(objdetects.at(i).type == class_name[j])
+        break;
 
-  int start = 0;
-  int nfram = 5;
+    objbuf.type = j;                         // Object type
+    objbuf.id = i;                           // Object id
+    objbuf.x = objdetects.at(i).detect.x;     // Center x of the bounding box
+    objbuf.y = objdetects.at(i).detect.y;     // Center y of the bounding box
+    objbuf.w = objdetects.at(i).rectangle.x;  // Width of the bounding box
+    objbuf.h = objdetects.at(i).rectangle.y;  // Height of the bounding box
 
-  d_images = LoadVideo(path_to_video, start, nfram);
+    objs.push_back(objbuf);
+  }
+}
+
+void ALObjectsToObjs (std::vector<ALObject> objects, std::vector<Obj> &objs)
+{
+  objs.clear();
+  Obj objbuf;
+  for (int i = 0; i < objects.size(); i++)
+  {
+    int j=0;
+    for(j=0; j < sizeof(class_name)/sizeof(*class_name); j++)
+      if(objects.at(i).obj_type == class_name[j])
+        break;
+
+    objbuf.type = j;                         // Object type
+    objbuf.id = objects.at(i).id;                           // Object id
+    objbuf.x = objects.at(i).claster_center.x;     // Center x of the bounding box
+    objbuf.y = objects.at(i).claster_center.y;     // Center y of the bounding box
+    objbuf.w = 0;  // Width of the bounding box
+    objbuf.h = 0;  // Height of the bounding box
+
+    objs.push_back(objbuf);
+  }
+}
+
+void fixIDs(const std::vector<std::vector<Obj>> &objs, std::vector<std::pair<uint, idFix>> &fixedIds, std::vector<cv::Mat> d_images)
+{
+  std::vector<ALObject> objects;
+  std::vector<Obj> objsbuf;
+  std::vector<std::vector<Obj>> fixedobjs;
+
+  idFix idfix;
+
+  const float maxr = 17.0;
+
+  fixedIds.clear();
+
+  fixedobjs.push_back(objs.at(0));//first frame can't be fixed
 
   for (int i = 0; i < d_images.size() - 1; i++)
   {
-    DetectorMotionV2b(d_images.at(i), d_images.at(i + 1), objects, start + i);
+    DetectorMotionV2b(d_images.at(i), d_images.at(i + 1), objects, i);
+    ALObjectsToObjs(objects,objsbuf);
+    fixedobjs.push_back(objsbuf);
   }
+
+  //std::cout<<"objs.size() - "<<objs.size()<<std::endl;
+  //std::cout<<"objects.size() - "<<objects.size()<<std::endl;
+  //std::cout<<"fixedobjs.size() - "<<fixedobjs.size()<<std::endl;
+
+  for(int i=0; i<objs.size(); i++)
+  {
+    for(int j=0; j<objs.at(i).size(); j++)
+    {
+      if(objs.at(i).at(j).type != 1)
+        continue;
+
+      float minr = sqrt(pow((float)objs.at(i).at(j).x - (float)fixedobjs.at(i).at(0).x,2) + pow((float)objs.at(i).at(j).y - (float)fixedobjs.at(i).at(0).y,2));
+      int ind = 0;
+
+      for(int n=1; n<fixedobjs.at(i).size(); n++)
+      {
+        float r = sqrt(pow((float)objs.at(i).at(j).x - (float)fixedobjs.at(i).at(n).x,2) + pow((float)objs.at(i).at(j).y - (float)fixedobjs.at(i).at(n).y,2));
+        if(r < minr)
+        {
+          minr = r;
+          ind = n;
+        }
+      }
+
+      if(minr < maxr && objs.at(i).at(j).id != fixedobjs.at(i).at(ind).id)
+      {
+        idfix.id = fixedobjs.at(i).at(ind).id;
+        idfix.idOld = objs.at(i).at(j).id;
+        idfix.type = objs.at(i).at(j).type;//not fixed
+        fixedIds.push_back(std::make_pair((uint)i,idfix));
+        fixedobjs.at(i).erase(fixedobjs.at(i).begin() + ind);
+      }
+    }
+  }
+
+  /*
+  std::cout<<"fixedIds.size() - "<<fixedIds.size()<<std::endl;
+
+  for(int i=0; i<fixedIds.size(); i++)
+  {
+    std::cout<<"fixedIds.at("<<i<<").second.id - "<<fixedIds.at(i).second.id<<std::endl;
+    std::cout<<"fixedIds.at("<<i<<").second.idOld- "<<fixedIds.at(i).second.idOld<<std::endl;
+  }
+  */
 }
 
 bool compare(intpoint a, intpoint b)

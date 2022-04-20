@@ -13,7 +13,6 @@ int main(int argc, char** argv) {
     torch::jit::script::Module module;
     std::string pathmodel;
     std::vector<ALObject> objects;
-    std::vector<ALObject> testobjs;
 
     pathmodel = argv[1];
     std::cout<<"pathmodel - "<<pathmodel<<std::endl;
@@ -34,31 +33,38 @@ int main(int argc, char** argv) {
 
     if(std::strstr(argv[2],".mp4") != NULL)
     {
-        std::vector<cv::Mat> d_images;
-        
         int start = 0;
         int nfram = 5;
+       
+        std::vector<std::vector<Obj>> objs;
+        std::vector<std::pair<uint,idFix>> fixedIds;
+        std::vector<cv::Mat> d_images;
+        //--------------------------------
 
         d_images = LoadVideo(argv[2],start,nfram);
 
-        cv::VideoWriter writer;
-        int codec = cv::VideoWriter::fourcc('M', 'P', '4', 'V');
-        
-        double fps = 10.0;
-        std::string filename = "ant_detect_demo_"+std::to_string(start)+"_"+std::to_string(nfram)+".mp4";
-        cv::Mat frame;
-        //bool isColor = (src.type() == CV_8UC3);
-        cv::Size sizeFrame(992+extr,992);
-        writer.open(filename, codec, fps, sizeFrame, true);
 
+         /*/---TEST---
+        std::vector<ALObject> objects;
         for(int i=0; i<d_images.size()-1; i++)
         {
-            std::cout << "[Frame: "<<start+i<<"]" << std::endl;
-            //detectorV4(pathmodel, d_images.at(i), device_type);
-            frame = DetectorMotionV3(pathmodel,device_type,d_images.at(i),d_images.at(i+1),objects,start+i,false);  
-            writer.write(frame);
+            DetectorMotionV2b(d_images.at(i), d_images.at(i + 1), objects, i);
         }
-        writer.release();
+        return 0;
+        //---TEST---*/
+
+
+        std::vector<OBJdetect> obj_detects;
+        std::vector<Obj> objbuf;
+        for(int i=0; i<d_images.size(); i++)
+        {
+            obj_detects.clear();
+            obj_detects = detectorV4(pathmodel, d_images.at(i), device_type);
+            OBJdetectsToObjs(obj_detects,objbuf);
+            objs.push_back(objbuf);
+        }
+
+        fixIDs(objs,fixedIds,d_images);
     }
     else
     {
