@@ -149,6 +149,31 @@ cv::Mat frame_resizing(cv::Mat frame)
   return frame(rect);
 }
 
+cv::Mat frame_resizingV2(cv::Mat frame, uint framesize)
+{
+  int rows = frame.rows;
+  int cols = frame.cols;
+
+  float rwsize;
+  float clsize;
+
+  if (rows > cols)
+  {
+    rwsize = framesize * rows * 1.0 / cols;
+    clsize = framesize;
+  }
+  else
+  {
+    rwsize = framesize;
+    clsize = framesize * cols * 1.0 / rows;
+  }
+
+  cv::resize(frame, frame, cv::Size(clsize, rwsize), cv::InterpolationFlags::INTER_CUBIC);
+  cv::Rect rect(0, 0, framesize, framesize);
+
+  return frame(rect);
+}
+
 std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::DeviceType device_type)
 {
   std::vector<OBJdetect> obj_detects;
@@ -1747,18 +1772,21 @@ void ALObjectsToObjs(std::vector<ALObject> objects, std::vector<Obj> &objs)
   }
 }
 
-void fixIDs(const std::vector<std::vector<Obj>> &objs, std::vector<std::pair<uint, idFix>> &fixedIds, std::vector<cv::Mat> &d_images)
+void fixIDs(const std::vector<std::vector<Obj>> &objs, std::vector<std::pair<uint, idFix>> &fixedIds, std::vector<cv::Mat> &d_images, uint framesize)
 {
   std::vector<ALObject> objects;
   std::vector<Obj> objsbuf;
   std::vector<std::vector<Obj>> fixedobjs;
   idFix idfix;
 
+  if(framesize > 0)
+  {
+    for(int i=0; i<d_images.size(); i++)
+      d_images.at(i) = frame_resizingV2(d_images.at(i),framesize);
+  }
+
   float koef = (float)d_images.at(0).rows / (float)resolution;
   const float maxr = 17.0*koef; //set depending on the size of the ant
-  
-  for (int i = 0; i < d_images.size(); i++)
-    d_images.at(i) = frame_resizing(d_images.at(i));
 
   fixedIds.clear();
 

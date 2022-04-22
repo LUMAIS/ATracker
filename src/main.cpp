@@ -43,16 +43,6 @@ int main(int argc, char** argv) {
 
         d_images = LoadVideo(argv[2],start,nfram);
 
-
-        /*/---TEST---
-        std::vector<ALObject> objects;
-        for(int i=0; i<d_images.size()-1; i++)
-        {
-            DetectorMotionV2b(d_images.at(i), d_images.at(i + 1), objects, i);
-        }
-        return 0;
-        //---TEST---*/
-
         std::vector<OBJdetect> obj_detects;
         std::vector<Obj> objbuf;
         for(int i=0; i<d_images.size(); i++)
@@ -62,7 +52,7 @@ int main(int argc, char** argv) {
             OBJdetectsToObjs(obj_detects,objbuf);
             objs.push_back(objbuf);
         }
-
+        
         fixIDs(objs,fixedIds,d_images);
     }
     else

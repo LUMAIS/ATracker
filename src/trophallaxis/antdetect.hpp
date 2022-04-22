@@ -208,6 +208,6 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
 
 cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
 
-void fixIDs(const std::vector<std::vector<Obj>>&objs, std::vector<std::pair<uint,idFix>>&fixedIds, std::vector<cv::Mat> &d_images);
+void fixIDs(const std::vector<std::vector<Obj>>&objs, std::vector<std::pair<uint,idFix>>&fixedIds, std::vector<cv::Mat> &d_images, uint framesize=0);
 
 void OBJdetectsToObjs(std::vector<OBJdetect> objdetects,std::vector<Obj> &objs);
