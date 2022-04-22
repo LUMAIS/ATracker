@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
         d_images = LoadVideo(argv[2],start,nfram);
 
 
-         /*/---TEST---
+        /*/---TEST---
         std::vector<ALObject> objects;
         for(int i=0; i<d_images.size()-1; i++)
         {
@@ -52,7 +52,6 @@ int main(int argc, char** argv) {
         }
         return 0;
         //---TEST---*/
-
 
         std::vector<OBJdetect> obj_detects;
         std::vector<Obj> objbuf;
