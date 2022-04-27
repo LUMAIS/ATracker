@@ -33,13 +33,23 @@ int main(int argc, char** argv) {
 
     if(std::strstr(argv[2],".mp4") != NULL)
     {
-        int start = 0;
-        int nfram = 5;
+        int start = 135;
+        int nfram = 15;
        
         std::vector<std::vector<Obj>> objs;
         std::vector<std::pair<uint,idFix>> fixedIds;
         std::vector<cv::Mat> d_images;
-        //--------------------------------
+
+        //---TEST---
+        d_images = LoadVideo(argv[2],start,nfram);
+        std::vector<ALObject> objects;
+        for(int i=0; i<d_images.size()-1; i++)
+        {
+            DetectorMotionV3(d_images.at(i), d_images.at(i + 1), objects, i);
+        }
+        return 0;
+        //---TEST---*/
+
 
         d_images = LoadVideo(argv[2],start,nfram);
 
@@ -52,7 +62,7 @@ int main(int argc, char** argv) {
             OBJdetectsToObjs(obj_detects,objbuf);
             objs.push_back(objbuf);
         }
-        
+
         fixIDs(objs,fixedIds,d_images);
     }
     else

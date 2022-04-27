@@ -29,8 +29,8 @@
 
 int extr = 205;        // sidebar size
 int half_imgsize = 80; // area half size for a moving object
-int resolution = 992;  // frame size for model
-int reduseres = 192;   // (good value 248)
+int resolution = 992;  // frame size for model 992
+int reduseres = 248;   // (good value 248)
 
 std::string class_name[9] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};
 
@@ -201,13 +201,10 @@ int testmodule(std::string strpath);
 std::vector<cv::Point2f> detectorT(torch::jit::script::Module module, cv::Mat imageBGR, torch::DeviceType device_type);
 std::vector<cv::Mat> LoadVideo(const std::string &paths, uint8_t startframe, uint8_t getframes);
 std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::DeviceType device_type); // latest version with CUDA support
-
 cv::Point2f claster_center(std::vector<cv::Point2f> claster_points);
 cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
 void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame);
-
-cv::Mat DetectorMotionV3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
-
+cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame);
 void fixIDs(const std::vector<std::vector<Obj>>&objs, std::vector<std::pair<uint,idFix>>&fixedIds, std::vector<cv::Mat> &d_images, uint framesize=0);
-
 void OBJdetectsToObjs(std::vector<OBJdetect> objdetects,std::vector<Obj> &objs);
+cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
