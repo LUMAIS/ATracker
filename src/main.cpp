@@ -33,8 +33,8 @@ int main(int argc, char** argv) {
 
     if(std::strstr(argv[2],".mp4") != NULL)
     {
-        int start = 135;
-        int nfram = 15;
+        int start = 0;
+        int nfram = 300;
        
         std::vector<std::vector<Obj>> objs;
         std::vector<std::pair<uint,idFix>> fixedIds;
@@ -42,11 +42,22 @@ int main(int argc, char** argv) {
 
         //---TEST---
         d_images = LoadVideo(argv[2],start,nfram);
+        cv::VideoWriter writer;
+        int codec = cv::VideoWriter::fourcc('M', 'P', '4', 'V');
+        
+        double fps = 10.0;
+        std::string filename = "ant_detect_demo_"+std::to_string(start)+"_"+std::to_string(nfram)+".mp4";
+        cv::Mat frame;
+        //bool isColor = (src.type() == CV_8UC3);
+        cv::Size sizeFrame(992+extr,992);
+        writer.open(filename, codec, fps, sizeFrame, true);
         std::vector<ALObject> objects;
         for(int i=0; i<d_images.size()-1; i++)
         {
-            DetectorMotionV3(d_images.at(i), d_images.at(i + 1), objects, i);
+            std::cout << "[Frame: "<<start+i<<"]" << std::endl;
+            writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, false)); 
         }
+        writer.release();
         return 0;
         //---TEST---*/
 

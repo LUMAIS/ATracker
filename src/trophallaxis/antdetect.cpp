@@ -101,11 +101,12 @@ std::vector<cv::Mat> LoadVideo(const std::string &paths, uint8_t startframe, uin
   else
   {
     cv::Mat framebuf;
-    for (int frame_count = startframe; frame_count < cap.get(cv::CAP_PROP_FRAME_COUNT); frame_count++)
-    {
-      cap.set(cv::CAP_PROP_POS_FRAMES, frame_count);
 
-      if (getframes != 0 && frame_count > startframe + getframes)
+    cap.set(cv::CAP_PROP_POS_FRAMES, startframe);
+
+    for (int frame_count = 0; frame_count < cap.get(cv::CAP_PROP_FRAME_COUNT); frame_count++)
+    {
+      if (getframes != 0 && frame_count > getframes)
         break;
 
       if (!cap.read(framebuf))
@@ -1353,35 +1354,35 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
   int rows = frame.rows;
   int cols = frame.cols;
 
-  float koef = (float)rows/(float)992;
+  float koef = (float)rows / (float)992;
 
-  float mpc = 15*koef;   // minimum number of points for a cluster (good value 15)
-  float nd = 9*koef;     //(good value 6-15)
-  float rcobj = 15*koef; //(good value 15)
-  float robj = 17*koef;  //(good value 17)
-  float mdist = 12*koef; // maximum distance from cluster center (good value 10)
-  int pft = 9;    // points fixation threshold (good value 9)
+  float mpc = 15 * koef;   // minimum number of points for a cluster (good value 15)
+  float nd = 9 * koef;     //(good value 6-15)
+  float rcobj = 15 * koef; //(good value 15)
+  float robj = 17 * koef;  //(good value 17)
+  float mdist = 12 * koef; // maximum distance from cluster center (good value 10)
+  int pft = 9;             // points fixation threshold (good value 9)
 
   cv::Mat img;
 
   //--------------------<moution detections>--------------------
-  
+
   float rwsize;
   float clsize;
 
   imagbuf = frame;
-  
-  resolution = rows;//cancels resizing, but the image is cropped to a square
+
+  resolution = rows; // cancels resizing, but the image is cropped to a square
 
   if (rows > cols)
   {
-    rwsize = (float)resolution*rows/(float)cols;
+    rwsize = (float)resolution * rows / (float)cols;
     clsize = resolution;
   }
   else
   {
     rwsize = resolution;
-    clsize = (float)resolution*cols/(float)rows;
+    clsize = (float)resolution * cols / (float)rows;
   }
 
   cv::resize(imagbuf, imagbuf, cv::Size(clsize, rwsize), cv::InterpolationFlags::INTER_CUBIC);
@@ -1525,19 +1526,19 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
     imagbuf = frame_resizing(framebuf);
     imagbuf.convertTo(imagbuf, CV_8UC3);
 
-    if (clastercenter.y - half_imgsize*koef < 0)
-      clastercenter.y = half_imgsize*koef + 1;
+    if (clastercenter.y - half_imgsize * koef < 0)
+      clastercenter.y = half_imgsize * koef + 1;
 
-    if (clastercenter.x - half_imgsize*koef < 0)
-      clastercenter.x = half_imgsize*koef + 1;
+    if (clastercenter.x - half_imgsize * koef < 0)
+      clastercenter.x = half_imgsize * koef + 1;
 
-    if (clastercenter.y + half_imgsize*koef > imagbuf.rows)
+    if (clastercenter.y + half_imgsize * koef > imagbuf.rows)
       clastercenter.y = imagbuf.rows - 1;
 
-    if (clastercenter.x + half_imgsize*koef > imagbuf.cols)
+    if (clastercenter.x + half_imgsize * koef > imagbuf.cols)
       clastercenter.x = imagbuf.cols - 1;
 
-    img = imagbuf(cv::Range(clastercenter.y - half_imgsize*koef, clastercenter.y + half_imgsize*koef), cv::Range(clastercenter.x - half_imgsize*koef, clastercenter.x + half_imgsize*koef));
+    img = imagbuf(cv::Range(clastercenter.y - half_imgsize * koef, clastercenter.y + half_imgsize * koef), cv::Range(clastercenter.x - half_imgsize * koef, clastercenter.x + half_imgsize * koef));
     cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
     img.convertTo(img, CV_8UC3);
     objects[j].img = img;
@@ -1623,7 +1624,7 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
       cv::Point2f clastercenter = claster_center(clasters[cls]);
       imagbuf = frame_resizing(framebuf);
       imagbuf.convertTo(imagbuf, CV_8UC3);
-      img = imagbuf(cv::Range(clastercenter.y - half_imgsize*koef, clastercenter.y + half_imgsize*koef), cv::Range(clastercenter.x - half_imgsize*koef, clastercenter.x + half_imgsize*koef));
+      img = imagbuf(cv::Range(clastercenter.y - half_imgsize * koef, clastercenter.y + half_imgsize * koef), cv::Range(clastercenter.x - half_imgsize * koef, clastercenter.x + half_imgsize * koef));
       cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
       img.convertTo(img, CV_8UC3);
 
@@ -1685,7 +1686,7 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
   //--------------</visualization>-------------------------
 
   //--------------<baseimag>-------------------------------
-  cv::Mat baseimag(resolution, resolution + extr*koef, CV_8UC3, cv::Scalar(0, 0, 0));
+  cv::Mat baseimag(resolution, resolution + extr * koef, CV_8UC3, cv::Scalar(0, 0, 0));
 
   for (int i = 0; i < objects.size(); i++)
   {
@@ -1716,16 +1717,16 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
     }
   }
 
-  imag.copyTo(baseimag(cv::Rect(extr*koef, 0, imag.cols, imag.rows)));
+  imag.copyTo(baseimag(cv::Rect(extr * koef, 0, imag.cols, imag.rows)));
 
   cv::Point2f p_idframe;
-  p_idframe.x = resolution + extr*koef - 95;
+  p_idframe.x = resolution + extr * koef - 95;
   p_idframe.y = 50;
   cv::putText(baseimag, std::to_string(id_frame), p_idframe, 1, 3, cv::Scalar(255, 255, 255), 2);
   cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
   //--------------</baseimag>-------------------------------
-  //imshow("Motion", baseimag);
-  //cv::waitKey(0);
+  // imshow("Motion", baseimag);
+  // cv::waitKey(0);
 }
 
 void OBJdetectsToObjs(std::vector<OBJdetect> objdetects, std::vector<Obj> &objs)
@@ -1779,14 +1780,14 @@ void fixIDs(const std::vector<std::vector<Obj>> &objs, std::vector<std::pair<uin
   std::vector<std::vector<Obj>> fixedobjs;
   idFix idfix;
 
-  if(framesize > 0)
+  if (framesize > 0)
   {
-    for(int i=0; i<d_images.size(); i++)
-      d_images.at(i) = frame_resizingV2(d_images.at(i),framesize);
+    for (int i = 0; i < d_images.size(); i++)
+      d_images.at(i) = frame_resizingV2(d_images.at(i), framesize);
   }
 
   float koef = (float)d_images.at(0).rows / (float)resolution;
-  const float maxr = 17.0*koef; //set depending on the size of the ant
+  const float maxr = 17.0 * koef; // set depending on the size of the ant
 
   fixedIds.clear();
 
@@ -1972,17 +1973,17 @@ std::vector<cv::Point2f> map_prob(std::vector<int> npsamples, std::vector<cv::Po
     top.push_back(bufnpmp);
   }
 
-  //sort(top.begin(), top.end(), compare);
+  // sort(top.begin(), top.end(), compare);
   buftop.push_back(top.at(0));
 
   for (int i = 1; i < top.size(); i++)
   {
-    if(buftop.at(buftop.size()-1).ipoint > top.at(i).ipoint)
+    if (buftop.at(buftop.size() - 1).ipoint > top.at(i).ipoint)
     {
-      if(buftop.size() < maxprbp)
+      if (buftop.size() < maxprbp)
         buftop.push_back(top.at(i));
       else
-        buftop.at(buftop.size()-1) = top.at(i);
+        buftop.at(buftop.size() - 1) = top.at(i);
     }
     sort(buftop.begin(), buftop.end(), compare);
   }
@@ -1992,14 +1993,14 @@ std::vector<cv::Point2f> map_prob(std::vector<int> npsamples, std::vector<cv::Po
     probapoints.push_back(buftop.at(i).mpoint);
   }
 
-
   return probapoints;
 }
 
-cv::Mat color_correction(cv::Mat imag){
-cv::Mat imagchange;
+cv::Mat color_correction(cv::Mat imag)
+{
+  cv::Mat imagchange;
 
-imag.copyTo(imagchange);
+  imag.copyTo(imagchange);
 
   for (int y = 0; y < imag.rows; y++)
   {
@@ -2007,15 +2008,15 @@ imag.copyTo(imagchange);
     {
       uchar color1 = imag.at<uchar>(cv::Point(x, y));
 
-      if(color1 < (uchar)50)
+      if (color1 < (uchar)70) // 65-70
         imagchange.at<uchar>(cv::Point(x, y)) = 0;
       else
         imagchange.at<uchar>(cv::Point(x, y)) = 255;
     }
   }
 
-  //imshow("imagchange", imagchange);
-  //cv::waitKey(0);
+  // imshow("imagchange", imagchange);
+  // cv::waitKey(0);
 
   return imagchange;
 }
@@ -2023,9 +2024,9 @@ imag.copyTo(imagchange);
 void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject &obj, int id_frame)
 {
 
-  int maxr = 1;//if point is outside then ignore
-  int half_range = 6;//half deviation
-  
+  int maxr = 1;       // if point is outside then ignore
+  int half_range = 6; // half deviation
+
   int wh = 800;
   std::vector<cv::Mat> claster_samples;
   cv::Point2f minp;
@@ -2085,11 +2086,11 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
       bool cont = true;
       for (int i = 0; i < obj.claster_points.size(); i++)
       {
-        if(abs(step_y - (obj.claster_points.at(i).y - obj.claster_center.y + half_imgsize)) < maxr && abs(step_x - (obj.claster_points.at(i).x - obj.claster_center.x + half_imgsize)) < maxr)
+        if (abs(step_y - (obj.claster_points.at(i).y - obj.claster_center.y + half_imgsize)) < maxr && abs(step_x - (obj.claster_points.at(i).x - obj.claster_center.x + half_imgsize)) < maxr)
           cont = false;
       }
 
-      if(cont == true)
+      if (cont == true)
         continue;
 
       for (int i = 0; i < claster_samples.size(); i++)
@@ -2118,7 +2119,7 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
   std::vector<intpoint> chain;
   std::vector<std::vector<intpoint>> chains;
 
-  //std::cout << "claster_points.size() - " << claster_points.size() << std::endl;
+  // std::cout << "claster_points.size() - " << claster_points.size() << std::endl;
   for (int ci = 0; ci < claster_points.size(); ci++)
   {
     /*/------------------<TESTING>-----------------------------------
@@ -2165,7 +2166,6 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
     alt_claster_points.push_back(map_prob(sample_np, mpoints));
   }
 
-
   for (int i = 0; i < alt_claster_points.size(); i++)
   {
     for (int ci = 0; ci < alt_claster_points.at(i).size(); ci++)
@@ -2196,7 +2196,7 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
       chains.push_back(chain);
     }
   }
-  
+
   int maxchains = 0;
   for (int i = 0; i < chains.size(); i++)
   {
@@ -2208,26 +2208,26 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
   for (int i = 0; i < chains.at(maxchains).size(); i++)
     obj.claster_points.push_back(claster_points.at(chains.at(maxchains).at(i).ipoint));
 
-/*
-  std::vector<cv::Point2f> claster_points_buf;
+  /*
+    std::vector<cv::Point2f> claster_points_buf;
 
-  int maxradd = 5;
-  for(int i=0; i < claster_points.size(); i++)
-  {
-     bool push = false;
-      
-      for (int j = 0; j < obj.claster_points.size(); j++)
-      {
-        if(abs(obj.claster_points.at(j).y - claster_points.at(i).y) < maxradd && abs(obj.claster_points.at(j).x - claster_points.at(i).x) < maxradd)
+    int maxradd = 5;
+    for(int i=0; i < claster_points.size(); i++)
+    {
+       bool push = false;
+
+        for (int j = 0; j < obj.claster_points.size(); j++)
         {
-          claster_points_buf.push_back(claster_points.at(i));
-          break;
+          if(abs(obj.claster_points.at(j).y - claster_points.at(i).y) < maxradd && abs(obj.claster_points.at(j).x - claster_points.at(i).x) < maxradd)
+          {
+            claster_points_buf.push_back(claster_points.at(i));
+            break;
+          }
         }
-      }        
-  }
+    }
 
-  for(int i=0 ; i< claster_points_buf.size(); i++)
-    obj.claster_points.push_back(claster_points_buf.at(i));*/
+    for(int i=0 ; i< claster_points_buf.size(); i++)
+      obj.claster_points.push_back(claster_points_buf.at(i));*/
 
   /*/------------------<removing motion points from a cluster>-------------------
   std::vector<cv::Point2f> claster_points_buf;
@@ -2241,17 +2241,17 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
         cpy = false;
         break;
       }
-    } 
+    }
 
     if(cpy == true)
-        claster_points_buf.push_back(claster_points.at(i));  
+        claster_points_buf.push_back(claster_points.at(i));
   }
 
   claster_points.clear();
   for(int i=0; i<claster_points_buf.size(); i++)
    claster_points.push_back(claster_points_buf.at(i));
   //------------------<removing motion points from a cluster>-------------------*/
-  
+
   obj.center_determine(false);
   frame.convertTo(bufimg, CV_8UC3);
   obj.img = bufimg(cv::Range(obj.claster_center.y - half_imgsize, obj.claster_center.y + half_imgsize), cv::Range(obj.claster_center.x - half_imgsize, obj.claster_center.x + half_imgsize));
@@ -2261,7 +2261,6 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
   //-----------------<probe visualization>-----------------
   cv::Mat resimg;
   imag.copyTo(resimg);
-
 
   cv::Mat resimg2(resimg.rows, resimg.cols, CV_8UC3, cv::Scalar(0, 0, 0));
   cv::Mat res2x(resimg.rows, resimg.cols * 2, CV_8UC3, cv::Scalar(0, 0, 0));
@@ -2284,7 +2283,7 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
     p1.y = claster_points.at(i).y - minp.y - (maxp.y - minp.y) / 2 + half_imgsize;
     p2.x = p1.x + resolution / reduseres;
     p2.y = p1.y + resolution / reduseres;
-    //rectangle(resimg2, p1, p2, cv::Scalar(0, 0, 255), 1);
+    // rectangle(resimg2, p1, p2, cv::Scalar(0, 0, 255), 1);
   }
 
   for (int i = 0; i < chains.at(maxchains).size(); i++)
@@ -2308,15 +2307,14 @@ void objdeterm(std::vector<cv::Point2f> &claster_points, cv::Mat frame, ALObject
     rectangle(resimg2, p1, p2, cv::Scalar(R, G, B), 1);
   }
 
-
   resimg2.copyTo(res2x(cv::Rect(0, 0, resimg2.cols, resimg2.rows)));
   resimg.copyTo(res2x(cv::Rect(resimg2.cols, 0, resimg2.cols, resimg2.rows)));
-  
+
   cv::resize(res2x, res2x, cv::Size(res2x.cols * 5, res2x.rows * 5), cv::InterpolationFlags::INTER_CUBIC);
 
   imshow("res2x", res2x);
   cv::waitKey(0);
-//-----------------</probe visualization>-----------------*/
+  //-----------------</probe visualization>-----------------*/
 }
 
 cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame)
@@ -2354,12 +2352,12 @@ cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &o
   cv::Mat imagbuf;
   cv::Mat framebuf = frame_resizing(frame);
 
-  int mpc = 25;   // minimum number of points for a cluster (good value 15)
-  int nd = 6;     //(good value 6-15)
-  //int rcobj = 15; //(good value 15)
-  //int robj = 17;  //(good value 17)
+  int mpc = 25; // minimum number of points for a cluster (good value 15)
+  int nd = 6;   //(good value 6-15)
+  // int rcobj = 15; //(good value 15)
+  // int robj = 17;  //(good value 17)
   int mdist = 25; // maximum distance from cluster center (good value 16)
-  int pft = 4;   // points fixation threshold (good value 9)
+  int pft = 4;    // points fixation threshold (good value 9)
 
   float rdet = 90;
   int minsc = 10;
@@ -2531,7 +2529,7 @@ cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &o
   //--------------</claster creation>----------------------
 
   //--------------<clusters to objects>--------------------
-  //std::cout << "objects.size() - " << objects.size() << std::endl;
+  // std::cout << "objects.size() - " << objects.size() << std::endl;
   if (objects.size() == 0)
   {
     for (int cls = 0; cls < ncls; cls++)
@@ -2555,13 +2553,13 @@ cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &o
     {
       if (clasters[cls].size() > minsc)
       {
-        //std::cout << "cls - " << cls << std::endl;
+        // std::cout << "cls - " << cls << std::endl;
         cv::Point2f clastercenter = claster_center(clasters[cls]);
         for (int i = 0; i < objects.size(); i++)
         {
           float rm = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
 
-          //std::cout << "rm - " << rm << std::endl;
+          // std::cout << "rm - " << rm << std::endl;
 
           if (rm < rdet)
           {
@@ -2573,8 +2571,6 @@ cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &o
   }
 
   //--------------</clusters to objects>-------------------
-
- 
 
   for (int i = 0; i < objects.size(); i++)
     objects[i].push_track_point(objects[i].claster_center);
@@ -2590,7 +2586,7 @@ cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &o
       pt2.x = clasters[i].at(j).x + resolution / reduseres;
       pt2.y = clasters[i].at(j).y + resolution / reduseres;
 
-      rectangle(imag, pt1, pt2, class_name_color[i+3], 1);
+      rectangle(imag, pt1, pt2, class_name_color[i + 3], 1);
     }
   }
   //--------------</clasters visualization>-------------------------
@@ -2612,12 +2608,10 @@ cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &o
     for (int j = 0; j < objects.at(i).track_points.size(); j++)
       cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
   }
-//--------------</objects visualization>-------------------------
+  //--------------</objects visualization>-------------------------
 
-
-
-//--------------<baseimag>-------------------------------
-cv::Mat baseimag(resolution, resolution + extr, CV_8UC3, cv::Scalar(0, 0, 0));
+  //--------------<baseimag>-------------------------------
+  cv::Mat baseimag(resolution, resolution + extr, CV_8UC3, cv::Scalar(0, 0, 0));
 
   for (int i = 0; i < objects.size(); i++)
   {
@@ -2670,25 +2664,33 @@ cv::Mat baseimag(resolution, resolution + extr, CV_8UC3, cv::Scalar(0, 0, 0));
   return baseimag;
 }
 
-cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector)
+bool compare_clsobj(ClsObjR a, ClsObjR b)
+{
+  if (a.r < b.r)
+    return 1;
+  else
+    return 0;
+}
+
+cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, size_t id_frame, bool usedetector)
 {
   cv::Scalar class_name_color[20] = {
       cv::Scalar(255, 0, 0),
       cv::Scalar(0, 20, 200),
       cv::Scalar(0, 255, 0),
       cv::Scalar(255, 0, 255),
-      cv::Scalar(0, 255, 255),
-      cv::Scalar(255, 255, 0),
-      cv::Scalar(255, 255, 255),
+      cv::Scalar(12, 245, 215),
+      cv::Scalar(235, 55, 0),
+      cv::Scalar(65, 255, 155),
       cv::Scalar(200, 0, 200),
-      cv::Scalar(100, 0, 255),
+      cv::Scalar(100, 0, 25),
       cv::Scalar(255, 0, 100),
       cv::Scalar(30, 20, 200),
       cv::Scalar(25, 255, 0),
       cv::Scalar(255, 44, 255),
       cv::Scalar(88, 255, 255),
       cv::Scalar(255, 255, 39),
-      cv::Scalar(255, 255, 255),
+      cv::Scalar(255, 205, 255),
       cv::Scalar(200, 46, 200),
       cv::Scalar(100, 79, 255),
       cv::Scalar(200, 46, 150),
@@ -2706,12 +2708,14 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
   cv::Mat imagbuf;
   cv::Mat framebuf = frame;
 
-  int mpc = 15;   // minimum number of points for a cluster (good value 15)
-  int nd = 9;     //(good value 6-15)
-  int rcobj = 17; //(good value 15)
-  int robj = 17;  //(good value 17)
+  int mpct = 3;      // minimum number of points for a cluster (tracking object) (good value 5)
+  int mpcc = 6;      // minimum number of points for a cluster (creation new object) (good value 13)
+  int nd = 2;        //(good value 6-15)
+  int rcobj = 15;    //(good value 15)
+  float robj = 17.0; //(good value 17)
+  float robj_k = 2.5;
   int mdist = 10; // maximum distance from cluster center (good value 10)
-  int pft = 9;    // points fixation threshold (good value 9)
+  int pft = 1;    // points fixation threshold (good value 9)
 
   cv::Mat img;
 
@@ -2843,6 +2847,9 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
 
   cv::Point2f pm;
 
+  imageBGR0 = color_correction(imageBGR0);
+  imageBGR = color_correction(imageBGR);
+
   for (int y = 0; y < imageBGR0.rows; y++)
   {
     for (int x = 0; x < imageBGR0.cols; x++)
@@ -2881,96 +2888,6 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
   else
     nobj = -1;
   //--------------</moution detections>--------------------
-
-  //--------------<layout of motion points by objects>-----
-
-  if (objects.size() > 0)
-  {
-    for (int i = 0; i < objects.size(); i++)
-    {
-      objects[i].claster_points.clear();
-    }
-
-    for (int i = 0; i < motion.size(); i++)
-    {
-      for (int j = 0; j < objects.size(); j++)
-      {
-        if (objects[j].model_center.x < 0)
-          continue;
-
-        if (i < 0)
-          break;
-
-        if ((motion.at(i).x < (objects[j].model_center.x + objects[j].rectangle.x / 2)) && (motion.at(i).x > (objects[j].model_center.x - objects[j].rectangle.x / 2)) && (motion.at(i).y < (objects[j].model_center.y + objects[j].rectangle.y / 2)) && (motion.at(i).y > (objects[j].model_center.y - objects[j].rectangle.y / 2)))
-        {
-          objects[j].claster_points.push_back(motion.at(i));
-          motion.erase(motion.begin() + i);
-          i--;
-        }
-      }
-    }
-
-    float rm = rcobj * 1.0 * resolution / reduseres;
-
-    for (int i = 0; i < motion.size(); i++)
-    {
-      rm = sqrt(pow((objects[0].claster_center.x - motion.at(i).x), 2) + pow((objects[0].claster_center.y - motion.at(i).y), 2));
-
-      int n = -1;
-      if (rm < rcobj * 1.0 * resolution / reduseres)
-        n = 0;
-
-      for (int j = 1; j < objects.size(); j++)
-      {
-        float r = sqrt(pow((objects[j].claster_center.x - motion.at(i).x), 2) + pow((objects[j].claster_center.y - motion.at(i).y), 2));
-        if (r < rcobj * 1.0 * resolution / reduseres && r < rm)
-        {
-          rm = r;
-          n = j;
-        }
-      }
-
-      if (n > -1)
-      {
-        objects[n].claster_points.push_back(motion.at(i));
-        motion.erase(motion.begin() + i);
-        i--;
-        objects[n].center_determine(false);
-        if (i < 0)
-          break;
-      }
-    }
-  }
-
-  for (int j = 0; j < objects.size(); j++)
-  {
-
-    objects[j].center_determine(false);
-
-    cv::Point2f clastercenter = objects[j].claster_center;
-
-    imagbuf = frame_resizing(framebuf);
-    imagbuf.convertTo(imagbuf, CV_8UC3);
-
-    if (clastercenter.y - half_imgsize < 0)
-      clastercenter.y = half_imgsize + 1;
-
-    if (clastercenter.x - half_imgsize < 0)
-      clastercenter.x = half_imgsize + 1;
-
-    if (clastercenter.y + half_imgsize > imagbuf.rows)
-      clastercenter.y = imagbuf.rows - 1;
-
-    if (clastercenter.x + half_imgsize > imagbuf.cols)
-      clastercenter.x = imagbuf.cols - 1;
-
-    img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
-    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-    img.convertTo(img, CV_8UC3);
-    objects[j].img = img;
-    objects[j].samples_creation();
-  }
-  //--------------</layout of motion points by objects>----
 
   //--------------<claster creation>-----------------------
 
@@ -3042,11 +2959,293 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
   //--------------</claster creation>----------------------
 
   //--------------<clusters to objects>--------------------
-  for (int cls = 0; cls < ncls; cls++)
+
+  //
+
+  /*
+    for (int cls = 0; cls < clasters.size(); cls++)
+    {
+      if (clasters[cls].size() > mpct)
+  for (int i = 0; i < clasters[cls].size(); i++)
+  {
+    pt1.x = clasters[cls].at(i).x;
+    pt1.y = clasters[cls].at(i).y;
+
+    pt2.x = clasters[cls].at(i).x + resolution / reduseres;
+    pt2.y = clasters[cls].at(i).y + resolution / reduseres;
+
+    if (cls % 2 == 0)
+      rectangle(imag, pt1, pt2, cv::Scalar(10 + cls * 10, 100, 205), 1);
+    else
+      rectangle(imag, pt1, pt2, cv::Scalar(100, 10 + cls * 10, 205), 1);
+  }
+}
+*/
+
+  if (objects.size() > 0)
+  {
+    std::vector<ClsObjR> clsobjrs;
+    ClsObjR clsobjr;
+    for (size_t i = 0; i < objects.size(); i++)
+    {
+      for (size_t cls = 0; cls < clasters.size(); cls++)
+      {
+        clsobjr.cls_id = cls;
+        clsobjr.obj_id = i;
+        cv::Point2f clastercenter = claster_center(clasters[cls]);
+        // clsobjr.r = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
+
+        clsobjr.r = sqrt(pow((objects[i].proposed_center().x - clastercenter.x), 2) + pow((objects[i].proposed_center().y - clastercenter.y), 2));
+
+        clsobjrs.push_back(clsobjr);
+      }
+    }
+
+    sort(clsobjrs.begin(), clsobjrs.end(), compare_clsobj);
+
+    //---<det obj>---
+    for (size_t i = 0; i < objects.size(); i++)
+      objects[i].det_pos = false;
+
+    for (size_t i = 0; i < clsobjrs.size(); i++)
+    {
+      size_t cls_id = clsobjrs.at(i).cls_id;
+      size_t obj_id = clsobjrs.at(i).obj_id;
+
+      if (clsobjrs.at(i).r < (float)robj * (float)resolution / (float)reduseres && clasters.at(cls_id).size() > mpct)
+      {
+
+        if (objects[obj_id].det_pos == false)
+          objects[obj_id].claster_points = clasters.at(cls_id);
+        else
+        {
+          continue;
+          // for (size_t j = 0; j < clasters.at(cls_id).size(); j++)
+          //   objects[obj_id].claster_points.push_back(clasters.at(cls_id).at(j));
+        }
+
+        objects[obj_id].center_determine(false);
+
+        for (size_t j = 0; j < clsobjrs.size(); j++)
+        {
+          if (clsobjrs.at(j).cls_id == cls_id)
+          {
+            clsobjrs.erase(clsobjrs.begin() + j);
+            j--;
+          }
+        }
+        i = 0;
+      }
+    }
+    //---</det obj>---
+    //---<new obj>----
+    for (size_t i = 0; i < clsobjrs.size(); i++)
+    {
+      size_t cls_id = clsobjrs.at(i).cls_id;
+      size_t obj_id = clsobjrs.at(i).obj_id;
+
+      cv::Point2f clastercenter = claster_center(clasters[cls_id]);
+      bool newobj = true;
+
+      for (size_t j = 0; j < objects.size(); j++)
+      {
+        float r = sqrt(pow((objects[j].claster_center.x - clastercenter.x), 2) + pow((objects[j].claster_center.y - clastercenter.y), 2));
+        if (r < (float)robj * 2.0 * (float)resolution / (float)reduseres)
+        {
+          newobj = false;
+          break;
+        }
+      }
+
+      if (clasters[cls_id].size() > mpcc && newobj == true) // if there are enough moving points
+      {
+        imagbuf = frame_resizing(framebuf);
+        imagbuf.convertTo(imagbuf, CV_8UC3);
+        img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
+        cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+        img.convertTo(img, CV_8UC3);
+        ALObject obj(objects.size(), "a", clasters[cls_id], img);
+        objects.push_back(obj);
+
+        for (int j = 0; j < clsobjrs.size(); j++)
+        {
+          if (clsobjrs.at(j).cls_id == cls_id)
+          {
+            clsobjrs.erase(clsobjrs.begin() + j);
+            j--;
+          }
+        }
+
+        i = 0;
+      }
+    }
+    //--</new obj>--
+
+    //--<corr obj>---
+
+    for (size_t i = 0; i < clsobjrs.size(); i++)
+    {
+      size_t cls_id = clsobjrs.at(i).cls_id;
+      size_t obj_id = clsobjrs.at(i).obj_id;
+
+      if (clsobjrs.at(i).r < (float)robj * robj_k * (float)resolution / (float)reduseres && clasters.at(cls_id).size() > mpct)
+      {
+        for (size_t j = 0; j < clasters.at(cls_id).size(); j++)
+          objects[obj_id].claster_points.push_back(clasters.at(cls_id).at(j));
+      }
+
+      objects[obj_id].center_determine(false);
+
+      for (size_t j = 0; j < clsobjrs.size(); j++)
+      {
+        if (clsobjrs.at(j).cls_id == cls_id)
+        {
+          clsobjrs.erase(clsobjrs.begin() + j);
+          j--;
+        }
+      }
+      i = 0;
+    }
+    //--<corr obj>---
+  }
+  else
+  {
+    //--<new obj>--
+    for (int cls = 0; cls < clasters.size(); cls++)
+    {
+      cv::Point2f clastercenter = claster_center(clasters[cls]);
+      bool newobj = true;
+
+      for (int i = 0; i < objects.size(); i++)
+      {
+        float r = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
+        if (r < (float)robj * (float)resolution / (float)reduseres)
+        {
+          newobj = false;
+          break;
+        }
+      }
+
+      if (clasters[cls].size() > mpcc && newobj == true) // if there are enough moving points
+      {
+        imagbuf = frame_resizing(framebuf);
+        imagbuf.convertTo(imagbuf, CV_8UC3);
+        img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
+        cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+        img.convertTo(img, CV_8UC3);
+        ALObject obj(objects.size(), "a", clasters[cls], img);
+        objects.push_back(obj);
+
+        clasters.erase(clasters.begin() + cls);
+        cls--;
+
+        if (cls < 0)
+          cls = 0;
+      }
+    }
+    //--</new obj>--
+  }
+
+  /*/--<det obj>--
+  for (int i = 0; i < objects.size(); i++)
+  {
+    float mr = (float)robj * (float)resolution / (float)reduseres;
+    bool detobj = false;
+    size_t nc = 0;
+
+    for (int cls = 0; cls < clasters.size(); cls++)
+    {
+      if (clasters[cls].size() > mpct) // if there are enough moving points
+      {
+        cv::Point2f clastercenter = claster_center(clasters[cls]);
+        float r = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
+
+        if (r < (float)robj * (float)resolution / (float)reduseres && r < mr)
+        {
+          nc = cls;
+          mr = r;
+          detobj = true;
+        }
+      }
+    }
+
+    if (detobj == true)
+    {
+      cv::Point2f clastercenter = claster_center(clasters[nc]);
+
+      img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
+      cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+      img.convertTo(img, CV_8UC3);
+      img.copyTo(objects[i].img);
+      objects[i].claster_points = clasters[nc];
+      objects[i].center_determine(true);
+      clasters.erase(clasters.begin() + nc);
+    }
+  }
+  //--</det obj>--
+
+  //--<corr obj>--
+
+  for (int cls = 0; cls < clasters.size(); cls++)
+  {
+    cv::Point2f clastercenter = claster_center(clasters[cls]);
+    bool corrobj = false;
+
+    int ni = 0;
+    float mr = (float)1.5 * robj * (float)resolution / (float)reduseres;
+
+    if (objects.size() > 0)
+      mr = sqrt(pow((objects[0].claster_center.x - clastercenter.x), 2) + pow((objects[0].claster_center.y - clastercenter.y), 2));
+
+    if (mr < (float)1.5 * robj * (float)resolution / (float)reduseres)
+      corrobj = true;
+
+    for (int i = 1; i < objects.size(); i++)
+    {
+      float r = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
+
+      if (r < (float)1.5 * robj * (float)resolution / (float)reduseres && r < mr)
+      {
+        corrobj = true;
+        ni = i;
+        mr = r;
+      }
+    }
+
+    if (corrobj == true)
+    {
+      std::cout << "objects[" << ni << "].id - " << objects[ni].id << std::endl;
+      std::cout << "clasters[" << cls << "].size()" << clasters[cls].size() << std::endl;
+      std::cout << "objects[" << ni << "].claster_points.size() - " << objects[ni].claster_points.size() << std::endl;
+
+      for (int j = 0; j < clasters[cls].size(); j++)
+        objects[ni].claster_points.push_back(clasters[cls].at(j));
+
+      std::cout << "objects[" << ni << "].claster_points.size() - " << objects[ni].claster_points.size() << std::endl;
+      std::cout << "-------------------------------------------------" << std::endl;
+
+      objects[ni].center_determine(true);
+      img = imagbuf(cv::Range(objects[ni].claster_center.y - half_imgsize, objects[ni].claster_center.y + half_imgsize), cv::Range(objects[ni].claster_center.x - half_imgsize, objects[ni].claster_center.x + half_imgsize));
+      cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+      img.convertTo(img, CV_8UC3);
+      img.copyTo(objects[ni].img);
+
+      clasters.erase(clasters.begin() + cls);
+
+      if (clasters.size() > 0)
+        cls--;
+      else
+        break;
+    }
+  }
+
+  //--</corr obj>--*/
+
+  /*
+  for (int cls = 0; cls < clasters.size(); cls++)
   {
     if (clasters[cls].size() > mpc) // if there are enough moving points
     {
-
       cv::Point2f clastercenter = claster_center(clasters[cls]);
       imagbuf = frame_resizing(framebuf);
       imagbuf.convertTo(imagbuf, CV_8UC3);
@@ -3057,31 +3256,62 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
       ALObject obj(objects.size(), "a", clasters[cls], img);
       bool newobj = true;
 
-      for (int i = 0; i < objects.size(); i++)
+      int ni = 0;
+      float mr = (float)robj * (float)resolution / (float)reduseres;
+
+      if (objects.size() > 0)
+        mr = sqrt(pow((objects[0].claster_center.x - obj.claster_center.x), 2) + pow((objects[0].claster_center.y - obj.claster_center.y), 2));
+
+      if (mr < (float)robj * (float)resolution / (float)reduseres)
+        newobj = false;
+
+      for (int i = 1; i < objects.size(); i++)
       {
+
         float r = sqrt(pow((objects[i].claster_center.x - obj.claster_center.x), 2) + pow((objects[i].claster_center.y - obj.claster_center.y), 2));
-        // float r = sqrt(pow((objects[i].proposed_center().x - obj.claster_center.x), 2) + pow((objects[i].proposed_center().y - obj.claster_center.y), 2));
-        if (r < robj * 1.0 * resolution / reduseres)
+
+        if (r < (float)robj * (float)resolution / (float)reduseres && r < mr)
         {
           newobj = false;
-
-          objects[i].img = obj.img;
-          objects[i].claster_points = obj.claster_points;
-          objects[i].center_determine(true);
-          break;
+          ni = i;
+          mr = r;
         }
       }
 
-      if (newobj == true)
-        objects.push_back(obj);
+      if (newobj == false)
+      {
+        objects[ni].img = obj.img;
+        objects[ni].claster_points = obj.claster_points;
+        objects[ni].center_determine(true);
+      }
+      else
+      {
+        if (clasters[cls].size() > mpcr || 2 == 2)
+        {
+          objects.push_back(obj);
+        }
+      }
     }
   }
+  */
+
   //--------------</clusters to objects>-------------------
 
   for (int i = 0; i < objects.size(); i++)
+  {
+    imagbuf = frame_resizing(framebuf);
+    imagbuf.convertTo(imagbuf, CV_8UC3);
+    img = imagbuf(cv::Range(objects[i].claster_center.y - half_imgsize, objects[i].claster_center.y + half_imgsize), cv::Range(objects[i].claster_center.x - half_imgsize, objects[i].claster_center.x + half_imgsize));
+    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+    img.convertTo(img, CV_8UC3);
+    img.copyTo(objects[i].img);
+    objects[i].center_determine(true);
+
     objects[i].push_track_point(objects[i].claster_center);
+  }
 
   //--------------<visualization>--------------------------
+
   for (int i = 0; i < objects.size(); i++)
   {
     for (int j = 0; j < objects.at(i).claster_points.size(); j++) // visualization of the claster_points
@@ -3109,6 +3339,7 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
     for (int j = 0; j < objects.at(i).track_points.size(); j++)
       cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
   }
+
   //--------------</visualization>-------------------------
 
   //--------------<baseimag>-------------------------------
@@ -3149,19 +3380,11 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
   p_idframe.x = resolution + extr - 95;
   p_idframe.y = 50;
   cv::putText(baseimag, std::to_string(id_frame), p_idframe, 1, 3, cv::Scalar(255, 255, 255), 2);
-  cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
+  // cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
   //--------------</baseimag>-------------------------------
 
   imshow("Motion", baseimag);
-  cv::waitKey(10);
-
-  /*
-    al_objs.push_back(objects.at(1));
-    if (al_objs.size() > 1)
-    {
-      draw_compare(al_objs.at(al_objs.size() - 2), al_objs.at(al_objs.size() - 1), class_name_color[al_objs.at(0).id]);
-    }
-  */
+  cv::waitKey(1);
 
   return baseimag;
 }

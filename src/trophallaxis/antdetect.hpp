@@ -49,6 +49,14 @@ public:
   }
 };
 
+class ClsObjR
+{
+  public:
+  size_t cls_id;
+  size_t obj_id;
+  float r;
+};
+
 class ALObject // AntLab Object
 {
 public:
@@ -63,8 +71,8 @@ public:
 
   std::vector<cv::Mat> samples;
   std::vector<cv::Point2f> coords;
-
   std::vector<IMGsamples> moution_samples;
+  bool det_pos = false;
 
   ALObject(uint16_t id, std::string obj_type, std::vector<cv::Point2f> claster_points, cv::Mat img)
   {
@@ -79,20 +87,45 @@ public:
   void center_determine(bool samplescreation)
   {
 
-    if (claster_points.size() > 0)
+    std::vector<cv::Point2f> cp;
+    std::vector<float> l;
+
+    for(int i=0; i < claster_points.size(); i++)
     {
-      int powx = 0;
-      int powy = 0;
-
-      for (int i = 0; i < claster_points.size(); i++)
+      for(int j=i; j< claster_points.size(); j++)
       {
-        powx = powx + pow(claster_points[i].x, 2);
-        powy = powy + pow(claster_points[i].y, 2);
-      }
+        cv::Point2f p;
+        float r;
 
-      claster_center.x = sqrt(powx / claster_points.size());
-      claster_center.y = sqrt(powy / claster_points.size());
+        p.x = (claster_points.at(i).x + claster_points.at(j).x)/2;
+        p.y = (claster_points.at(i).y + claster_points.at(j).y)/2;
+
+        cp.push_back(p);
+
+        r = sqrt(pow((claster_points.at(i).x - claster_points.at(j).x),2) + pow((claster_points.at(i).y - claster_points.at(j).y),2));
+
+        l.push_back(r);
+      }
     }
+
+    cv::Point2f sumcp;
+    float suml = 0;
+
+    sumcp.x = 0;
+    sumcp.y = 0;
+
+    for(int i =0; i< cp.size(); i++)
+    {
+      sumcp.x += cp.at(i).x*l.at(i);
+      sumcp.y += cp.at(i).y*l.at(i);
+      suml += l.at(i);
+    }
+
+    claster_center.x = sumcp.x/suml;
+    claster_center.y = sumcp.y/suml;
+
+    det_pos = true;
+
 
     if (samplescreation == true)
     {
@@ -137,10 +170,10 @@ public:
   {
     cv::Point2f proposed;
 
-    if (track_points.size() > 0)
+    if (track_points.size() > 1)
     {
-      proposed.x = claster_center.x + (claster_center.x - track_points.at(track_points.size() - 1).x) / 10;
-      proposed.y = claster_center.y + (claster_center.y - track_points.at(track_points.size() - 1).y) / 10;
+      proposed.x = claster_center.x + 0.05*(claster_center.x - track_points.at(track_points.size() - 2).x);
+      proposed.y = claster_center.y + 0.05*(claster_center.y - track_points.at(track_points.size() - 2).y);
     }
     else
       proposed = claster_center;
@@ -207,4 +240,4 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
 cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame);
 void fixIDs(const std::vector<std::vector<Obj>>&objs, std::vector<std::pair<uint,idFix>>&fixedIds, std::vector<cv::Mat> &d_images, uint framesize=0);
 void OBJdetectsToObjs(std::vector<OBJdetect> objdetects,std::vector<Obj> &objs);
-cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);
+cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, size_t id_frame, bool usedetector);
