@@ -89,7 +89,7 @@ void drawrec(cv::Mat &image, cv::Point2f p1, int size, bool detect, float koef)
   cv::line(image, p4, p1, cv::Scalar(B, G, R), 2, 8, 0);
 }
 
-std::vector<cv::Mat> LoadVideo(const std::string &paths, uint8_t startframe, uint8_t getframes)
+std::vector<cv::Mat> LoadVideo(const std::string &paths, uint16_t startframe, uint16_t getframes)
 {
   std::vector<cv::Mat> d_images;
   cv::VideoCapture cap(paths);
@@ -106,8 +106,11 @@ std::vector<cv::Mat> LoadVideo(const std::string &paths, uint8_t startframe, uin
 
     for (int frame_count = 0; frame_count < cap.get(cv::CAP_PROP_FRAME_COUNT); frame_count++)
     {
-      if (getframes != 0 && frame_count > getframes)
+      if (frame_count > getframes)
+      {
+        std::cout << "[LoadVideo]: (int)getframes -  " << (int)getframes << std::endl;
         break;
+      }
 
       if (!cap.read(framebuf))
       {
@@ -2709,11 +2712,11 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
   cv::Mat framebuf = frame;
 
   int mpct = 3;      // minimum number of points for a cluster (tracking object) (good value 5)
-  int mpcc = 6;      // minimum number of points for a cluster (creation new object) (good value 13)
-  int nd = 2;        //(good value 6-15)
+  int mpcc = 7;      // minimum number of points for a cluster (creation new object) (good value 13)
+  float nd = 1.5;        //(good value 6-15)
   int rcobj = 15;    //(good value 15)
-  float robj = 17.0; //(good value 17)
-  float robj_k = 2.5;
+  float robj = 22.0; //(good value 17)
+  float robj_k = 1.0;
   int mdist = 10; // maximum distance from cluster center (good value 10)
   int pft = 1;    // points fixation threshold (good value 9)
 
@@ -2728,8 +2731,9 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
 
     for (int i = 0; i < objects.size(); i++)
     {
-      objects[i].model_center.x = -1;
-      objects[i].model_center.y = -1;
+      // objects[i].model_center.x = -1;
+      // objects[i].model_center.y = -1;
+      objects[i].det_mc = false;
     }
 
     for (int i = 0; i < detects.size(); i++)
@@ -2741,7 +2745,7 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
       }
     }
 
-    for (int i = 0; i < detects.size(); i++)
+    for (uint16_t i = 0; i < detects.size(); i++)
     {
       std::vector<cv::Point2f> claster_points;
       claster_points.push_back(detects.at(i).detect);
@@ -2754,39 +2758,43 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
       obj.model_center = detects.at(i).detect;
       obj.claster_center = detects.at(i).detect;
       obj.rectangle = detects.at(i).rectangle;
+      obj.det_mc = true;
       // obj.track_points.push_back(detects.at(i).detect);
       // obj.push_track_point(detects.at(i).detect);
 
-      float rm = rcobj * 1.0 * resolution / reduseres;
-      int n = -1;
+      float rm = rcobj * (float)resolution / (float)reduseres;
+      bool newobj = true;
+      uint16_t n;
 
       if (objects.size() > 0)
       {
         rm = sqrt(pow((objects[0].claster_center.x - obj.claster_center.x), 2) + pow((objects[0].claster_center.y - obj.claster_center.y), 2));
         // rm = sqrt(pow((objects[0].proposed_center().x - obj.claster_center.x), 2) + pow((objects[0].proposed_center().y - obj.claster_center.y), 2));
-        if (rm < rcobj * 1.0 * resolution / reduseres && rm < rcobj)
-          n = 0;
-      }
-
-      for (int j = 1; j < objects.size(); j++)
-      {
-        float r = sqrt(pow((objects[j].claster_center.x - obj.claster_center.x), 2) + pow((objects[j].claster_center.y - obj.claster_center.y), 2));
-        // float r = sqrt(pow((objects[j].proposed_center().x - obj.claster_center.x), 2) + pow((objects[j].proposed_center().y - obj.claster_center.y), 2));
-        if (r < rcobj * 1.0 * resolution / reduseres && r < rm)
+        if (rm < rcobj * (float)resolution / (float)reduseres)
         {
-          rm = r;
-          n = j;
+          n = 0;
+          newobj = false;
         }
       }
 
-      if (n > -1)
+      for (uint16_t j = 1; j < objects.size(); j++)
       {
-        objects[n].claster_center = obj.model_center;
+        float r = sqrt(pow((objects[j].claster_center.x - obj.claster_center.x), 2) + pow((objects[j].claster_center.y - obj.claster_center.y), 2));
+        // float r = sqrt(pow((objects[j].proposed_center().x - obj.claster_center.x), 2) + pow((objects[j].proposed_center().y - obj.claster_center.y), 2));
+        if (r < rcobj * (float)resolution / (float)reduseres && r < rm)
+        {
+          rm = r;
+          n = j;
+          newobj = false;
+        }
+      }
+
+      if (newobj == false)
+      {
         objects[n].model_center = obj.model_center;
         objects[n].rectangle = obj.rectangle;
-        // objects[n].track_points.push_back(obj.claster_center);
-        // objects[n].push_track_point(obj.claster_center);
         objects[n].img = obj.img;
+        objects[n].det_mc = true;
       }
       else
       {
@@ -2850,9 +2858,9 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
   imageBGR0 = color_correction(imageBGR0);
   imageBGR = color_correction(imageBGR);
 
-  for (int y = 0; y < imageBGR0.rows; y++)
+  for (uint16_t y = 0; y < imageBGR0.rows; y++)
   {
-    for (int x = 0; x < imageBGR0.cols; x++)
+    for (uint16_t x = 0; x < imageBGR0.cols; x++)
     {
       uchar color1 = imageBGR0.at<uchar>(cv::Point(x, y));
       uchar color2 = imageBGR.at<uchar>(cv::Point(x, y));
@@ -2869,7 +2877,7 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
   cv::Point2f pt1;
   cv::Point2f pt2;
 
-  for (int i = 0; i < motion.size(); i++) // visualization of the claster_points
+  for (int i = 0; i < motion.size(); i++) // visualization of the white claster_points
   {
     pt1.x = motion.at(i).x;
     pt1.y = motion.at(i).y;
@@ -2913,7 +2921,7 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
     for (int i = 0; i < motion.size(); i++)
     {
       float r = sqrt(pow((pc.x - motion.at(i).x), 2) + pow((pc.y - motion.at(i).y), 2));
-      if (r < nd * 1.0 * resolution / reduseres)
+      if (r < nd * (float)resolution / (float)reduseres)
       {
         cv::Point2f cl_c = claster_center(clasters.at(ncls));
         r = sqrt(pow((cl_c.x - motion.at(i).x), 2) + pow((cl_c.y - motion.at(i).y), 2));
@@ -2926,19 +2934,19 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
       }
     }
 
-    int newp;
+    uint16_t newp;
     do
     {
       newp = 0;
 
-      for (int c = 0; c < clasters[ncls].size(); c++)
+      for (uint16_t c = 0; c < clasters[ncls].size(); c++)
       {
         pc = clasters[ncls].at(c);
         for (int i = 0; i < motion.size(); i++)
         {
           float r = sqrt(pow((pc.x - motion.at(i).x), 2) + pow((pc.y - motion.at(i).y), 2));
 
-          if (r < nd * 1.0 * resolution / reduseres)
+          if (r < nd * (float)resolution / (float)reduseres)
           {
             cv::Point2f cl_c = claster_center(clasters.at(ncls));
             r = sqrt(pow((cl_c.x - motion.at(i).x), 2) + pow((cl_c.y - motion.at(i).y), 2));
@@ -2960,30 +2968,11 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
 
   //--------------<clusters to objects>--------------------
 
-  //
-
-  /*
-    for (int cls = 0; cls < clasters.size(); cls++)
-    {
-      if (clasters[cls].size() > mpct)
-  for (int i = 0; i < clasters[cls].size(); i++)
-  {
-    pt1.x = clasters[cls].at(i).x;
-    pt1.y = clasters[cls].at(i).y;
-
-    pt2.x = clasters[cls].at(i).x + resolution / reduseres;
-    pt2.y = clasters[cls].at(i).y + resolution / reduseres;
-
-    if (cls % 2 == 0)
-      rectangle(imag, pt1, pt2, cv::Scalar(10 + cls * 10, 100, 205), 1);
-    else
-      rectangle(imag, pt1, pt2, cv::Scalar(100, 10 + cls * 10, 205), 1);
-  }
-}
-*/
-
   if (objects.size() > 0)
   {
+    for (size_t i = 0; i < objects.size(); i++)
+      objects[i].det_pos = false;
+
     std::vector<ClsObjR> clsobjrs;
     ClsObjR clsobjr;
     for (size_t i = 0; i < objects.size(); i++)
@@ -2994,19 +2983,57 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
         clsobjr.obj_id = i;
         cv::Point2f clastercenter = claster_center(clasters[cls]);
         // clsobjr.r = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
-
         clsobjr.r = sqrt(pow((objects[i].proposed_center().x - clastercenter.x), 2) + pow((objects[i].proposed_center().y - clastercenter.y), 2));
-
         clsobjrs.push_back(clsobjr);
       }
     }
 
     sort(clsobjrs.begin(), clsobjrs.end(), compare_clsobj);
 
-    //---<det obj>---
-    for (size_t i = 0; i < objects.size(); i++)
-      objects[i].det_pos = false;
+    //--<corr obj use model>---
+    if (usedetector == true)
+      for (size_t i = 0; i < clsobjrs.size(); i++)
+      {
+        size_t cls_id = clsobjrs.at(i).cls_id;
+        size_t obj_id = clsobjrs.at(i).obj_id;
 
+        if (objects.at(obj_id).det_mc == true)
+        {
+          cv::Point2f clastercenter = claster_center(clasters[cls_id]);
+          pt1.x = objects.at(obj_id).model_center.x - objects.at(obj_id).rectangle.x / 2;
+          pt1.y = objects.at(obj_id).model_center.y - objects.at(obj_id).rectangle.y / 2;
+
+          pt2.x = objects.at(obj_id).model_center.x + objects.at(obj_id).rectangle.x / 2;
+          pt2.y = objects.at(obj_id).model_center.y + objects.at(obj_id).rectangle.y / 2;
+
+          if (pt1.x < clastercenter.x && clastercenter.x < pt2.x && pt1.y < clastercenter.y && clastercenter.y < pt2.y)
+          {
+
+            if (objects[obj_id].det_pos == false)
+              objects[obj_id].claster_points = clasters.at(cls_id);
+            else
+            {
+              for (size_t j = 0; j < clasters.at(cls_id).size(); j++)
+                objects[obj_id].claster_points.push_back(clasters.at(cls_id).at(j));
+            }
+
+            objects[obj_id].center_determine(false);
+
+            for (size_t j = 0; j < clsobjrs.size(); j++)
+            {
+              if (clsobjrs.at(j).cls_id == cls_id)
+              {
+                clsobjrs.erase(clsobjrs.begin() + j);
+                j--;
+              }
+            }
+            i = 0;
+          }
+        }
+      }
+    //--</corr obj use model>---
+
+    //---<det obj>---
     for (size_t i = 0; i < clsobjrs.size(); i++)
     {
       size_t cls_id = clsobjrs.at(i).cls_id;
@@ -3067,7 +3094,7 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
         ALObject obj(objects.size(), "a", clasters[cls_id], img);
         objects.push_back(obj);
 
-        for (int j = 0; j < clsobjrs.size(); j++)
+        for (size_t j = 0; j < clsobjrs.size(); j++)
         {
           if (clsobjrs.at(j).cls_id == cls_id)
           {
@@ -3075,38 +3102,36 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
             j--;
           }
         }
-
         i = 0;
       }
     }
     //--</new obj>--
 
     //--<corr obj>---
-
     for (size_t i = 0; i < clsobjrs.size(); i++)
     {
       size_t cls_id = clsobjrs.at(i).cls_id;
       size_t obj_id = clsobjrs.at(i).obj_id;
 
-      if (clsobjrs.at(i).r < (float)robj * robj_k * (float)resolution / (float)reduseres && clasters.at(cls_id).size() > mpct)
+      if (clsobjrs.at(i).r < (float)robj * robj_k * (float)resolution / (float)reduseres && clasters.at(cls_id).size() > mpct / 2)
       {
         for (size_t j = 0; j < clasters.at(cls_id).size(); j++)
           objects[obj_id].claster_points.push_back(clasters.at(cls_id).at(j));
-      }
 
-      objects[obj_id].center_determine(false);
+        objects[obj_id].center_determine(false);
 
-      for (size_t j = 0; j < clsobjrs.size(); j++)
-      {
-        if (clsobjrs.at(j).cls_id == cls_id)
+        for (size_t j = 0; j < clsobjrs.size(); j++)
         {
-          clsobjrs.erase(clsobjrs.begin() + j);
-          j--;
+          if (clsobjrs.at(j).cls_id == cls_id)
+          {
+            clsobjrs.erase(clsobjrs.begin() + j);
+            j--;
+          }
         }
+        i = 0;
       }
-      i = 0;
     }
-    //--<corr obj>---
+    //--</corr obj>---
   }
   else
   {
@@ -3145,158 +3170,9 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
     }
     //--</new obj>--
   }
-
-  /*/--<det obj>--
-  for (int i = 0; i < objects.size(); i++)
-  {
-    float mr = (float)robj * (float)resolution / (float)reduseres;
-    bool detobj = false;
-    size_t nc = 0;
-
-    for (int cls = 0; cls < clasters.size(); cls++)
-    {
-      if (clasters[cls].size() > mpct) // if there are enough moving points
-      {
-        cv::Point2f clastercenter = claster_center(clasters[cls]);
-        float r = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
-
-        if (r < (float)robj * (float)resolution / (float)reduseres && r < mr)
-        {
-          nc = cls;
-          mr = r;
-          detobj = true;
-        }
-      }
-    }
-
-    if (detobj == true)
-    {
-      cv::Point2f clastercenter = claster_center(clasters[nc]);
-
-      img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
-      cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-      img.convertTo(img, CV_8UC3);
-      img.copyTo(objects[i].img);
-      objects[i].claster_points = clasters[nc];
-      objects[i].center_determine(true);
-      clasters.erase(clasters.begin() + nc);
-    }
-  }
-  //--</det obj>--
-
-  //--<corr obj>--
-
-  for (int cls = 0; cls < clasters.size(); cls++)
-  {
-    cv::Point2f clastercenter = claster_center(clasters[cls]);
-    bool corrobj = false;
-
-    int ni = 0;
-    float mr = (float)1.5 * robj * (float)resolution / (float)reduseres;
-
-    if (objects.size() > 0)
-      mr = sqrt(pow((objects[0].claster_center.x - clastercenter.x), 2) + pow((objects[0].claster_center.y - clastercenter.y), 2));
-
-    if (mr < (float)1.5 * robj * (float)resolution / (float)reduseres)
-      corrobj = true;
-
-    for (int i = 1; i < objects.size(); i++)
-    {
-      float r = sqrt(pow((objects[i].claster_center.x - clastercenter.x), 2) + pow((objects[i].claster_center.y - clastercenter.y), 2));
-
-      if (r < (float)1.5 * robj * (float)resolution / (float)reduseres && r < mr)
-      {
-        corrobj = true;
-        ni = i;
-        mr = r;
-      }
-    }
-
-    if (corrobj == true)
-    {
-      std::cout << "objects[" << ni << "].id - " << objects[ni].id << std::endl;
-      std::cout << "clasters[" << cls << "].size()" << clasters[cls].size() << std::endl;
-      std::cout << "objects[" << ni << "].claster_points.size() - " << objects[ni].claster_points.size() << std::endl;
-
-      for (int j = 0; j < clasters[cls].size(); j++)
-        objects[ni].claster_points.push_back(clasters[cls].at(j));
-
-      std::cout << "objects[" << ni << "].claster_points.size() - " << objects[ni].claster_points.size() << std::endl;
-      std::cout << "-------------------------------------------------" << std::endl;
-
-      objects[ni].center_determine(true);
-      img = imagbuf(cv::Range(objects[ni].claster_center.y - half_imgsize, objects[ni].claster_center.y + half_imgsize), cv::Range(objects[ni].claster_center.x - half_imgsize, objects[ni].claster_center.x + half_imgsize));
-      cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-      img.convertTo(img, CV_8UC3);
-      img.copyTo(objects[ni].img);
-
-      clasters.erase(clasters.begin() + cls);
-
-      if (clasters.size() > 0)
-        cls--;
-      else
-        break;
-    }
-  }
-
-  //--</corr obj>--*/
-
-  /*
-  for (int cls = 0; cls < clasters.size(); cls++)
-  {
-    if (clasters[cls].size() > mpc) // if there are enough moving points
-    {
-      cv::Point2f clastercenter = claster_center(clasters[cls]);
-      imagbuf = frame_resizing(framebuf);
-      imagbuf.convertTo(imagbuf, CV_8UC3);
-      img = imagbuf(cv::Range(clastercenter.y - half_imgsize, clastercenter.y + half_imgsize), cv::Range(clastercenter.x - half_imgsize, clastercenter.x + half_imgsize));
-      cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-      img.convertTo(img, CV_8UC3);
-
-      ALObject obj(objects.size(), "a", clasters[cls], img);
-      bool newobj = true;
-
-      int ni = 0;
-      float mr = (float)robj * (float)resolution / (float)reduseres;
-
-      if (objects.size() > 0)
-        mr = sqrt(pow((objects[0].claster_center.x - obj.claster_center.x), 2) + pow((objects[0].claster_center.y - obj.claster_center.y), 2));
-
-      if (mr < (float)robj * (float)resolution / (float)reduseres)
-        newobj = false;
-
-      for (int i = 1; i < objects.size(); i++)
-      {
-
-        float r = sqrt(pow((objects[i].claster_center.x - obj.claster_center.x), 2) + pow((objects[i].claster_center.y - obj.claster_center.y), 2));
-
-        if (r < (float)robj * (float)resolution / (float)reduseres && r < mr)
-        {
-          newobj = false;
-          ni = i;
-          mr = r;
-        }
-      }
-
-      if (newobj == false)
-      {
-        objects[ni].img = obj.img;
-        objects[ni].claster_points = obj.claster_points;
-        objects[ni].center_determine(true);
-      }
-      else
-      {
-        if (clasters[cls].size() > mpcr || 2 == 2)
-        {
-          objects.push_back(obj);
-        }
-      }
-    }
-  }
-  */
-
   //--------------</clusters to objects>-------------------
 
+  //--------------<post processing>-----------------------
   for (int i = 0; i < objects.size(); i++)
   {
     imagbuf = frame_resizing(framebuf);
@@ -3307,7 +3183,10 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
     img.copyTo(objects[i].img);
     objects[i].center_determine(true);
 
-    objects[i].push_track_point(objects[i].claster_center);
+    if (objects[i].det_mc == false)
+      objects[i].push_track_point(objects[i].claster_center);
+    else
+      objects[i].push_track_point(objects[i].model_center);
   }
 
   //--------------<visualization>--------------------------
@@ -3325,7 +3204,7 @@ cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type,
       rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
     }
 
-    if (objects.at(i).model_center.x > -1) // visualization of the classifier
+    if (objects.at(i).det_mc == true) // visualization of the classifier
     {
       pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
       pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;

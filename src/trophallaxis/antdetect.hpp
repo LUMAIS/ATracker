@@ -30,7 +30,7 @@
 int extr = 205;        // sidebar size
 int half_imgsize = 80; // area half size for a moving object
 int resolution = 992;  // frame size for model 992
-int reduseres = 248;   // (good value 248)
+int reduseres = 290;   // (good value 248)
 
 std::string class_name[9] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};
 
@@ -65,6 +65,8 @@ public:
   std::vector<cv::Point2f> claster_points;
   cv::Point2f claster_center;
   cv::Point2f model_center;
+  bool det_mc = false;
+
   std::vector<cv::Point2f> track_points;
   cv::Point2f rectangle;
   cv::Mat img;
@@ -81,7 +83,7 @@ public:
     this->claster_points = claster_points;
     this->img = img;
     center_determine(true);
-    model_center = claster_center;
+    //model_center = claster_center;
   }
 
   void center_determine(bool samplescreation)
@@ -172,8 +174,8 @@ public:
 
     if (track_points.size() > 1)
     {
-      proposed.x = claster_center.x + 0.05*(claster_center.x - track_points.at(track_points.size() - 2).x);
-      proposed.y = claster_center.y + 0.05*(claster_center.y - track_points.at(track_points.size() - 2).y);
+      proposed.x = claster_center.x + 0.5*(claster_center.x - track_points.at(track_points.size() - 2).x);
+      proposed.y = claster_center.y + 0.5*(claster_center.y - track_points.at(track_points.size() - 2).y);
     }
     else
       proposed = claster_center;
@@ -232,7 +234,7 @@ void testtorch();
 int testmodule(std::string strpath);
 
 std::vector<cv::Point2f> detectorT(torch::jit::script::Module module, cv::Mat imageBGR, torch::DeviceType device_type);
-std::vector<cv::Mat> LoadVideo(const std::string &paths, uint8_t startframe, uint8_t getframes);
+std::vector<cv::Mat> LoadVideo(const std::string &paths, uint16_t startframe, uint16_t getframes);
 std::vector<OBJdetect> detectorV4(std::string pathmodel, cv::Mat frame, torch::DeviceType device_type); // latest version with CUDA support
 cv::Point2f claster_center(std::vector<cv::Point2f> claster_points);
 cv::Mat DetectorMotionV2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame, bool usedetector);

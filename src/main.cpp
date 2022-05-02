@@ -33,8 +33,8 @@ int main(int argc, char** argv) {
 
     if(std::strstr(argv[2],".mp4") != NULL)
     {
-        int start = 0;
-        int nfram = 300;
+        uint16_t start = 950;
+        uint16_t nfram = 35;
        
         std::vector<std::vector<Obj>> objs;
         std::vector<std::pair<uint,idFix>> fixedIds;
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
         for(int i=0; i<d_images.size()-1; i++)
         {
             std::cout << "[Frame: "<<start+i<<"]" << std::endl;
-            writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, false)); 
+            writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, true)); 
         }
         writer.release();
         return 0;
