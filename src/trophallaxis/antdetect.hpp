@@ -6,6 +6,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
+
+#include <opencv2/features2d.hpp>
+//#include <opencv2/xfeatures2d.hpp>
+
 #include <torch/torch.h>
 
 #include <chrono>
@@ -19,18 +23,16 @@
 #include <vector>
 #include <utility> 
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/opencv.hpp>
 
-#include <opencv2/dnn/dnn.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
 
-int extr = 205;        // sidebar size
-int half_imgsize = 80; // area half size for a moving object
-int resolution = 992;  // frame size for model 992
-int reduseres = 290;   // (good value 248)
+int resolution = 1200;  // frame size for model 992
+
+uint16_t extr = 205;        // sidebar size
+uint16_t half_imgsize = 80; // area half size for a moving object
+const uint16_t model_resolution = resolution;  // frame resizing for model (992)
+uint16_t frame_resolution = resolution;//frame frame_resolution
+uint16_t reduseres = 400;   // (good value 248)
+uint16_t color_threshold = 80; // 65-70
 
 std::string class_name[9] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};
 
@@ -74,7 +76,11 @@ public:
   std::vector<cv::Mat> samples;
   std::vector<cv::Point2f> coords;
   std::vector<IMGsamples> moution_samples;
+
+
   bool det_pos = false;
+
+  std::vector<uint> ORB_ids;
 
   ALObject(uint16_t id, std::string obj_type, std::vector<cv::Point2f> claster_points, cv::Mat img)
   {
@@ -148,9 +154,9 @@ public:
       coord.y = claster_points.at(i).y - claster_center.y + half_imgsize;
       coord.x = claster_points.at(i).x - claster_center.x + half_imgsize;
 
-      if (coord.y > 0 && (coord.y + resolution / reduseres) < 2 * half_imgsize && coord.x > 0 && (coord.x + resolution / reduseres) < 2 * half_imgsize)
+      if (coord.y > 0 && (coord.y + frame_resolution / reduseres) < 2 * half_imgsize && coord.x > 0 && (coord.x + frame_resolution / reduseres) < 2 * half_imgsize)
       {
-        sample = img(cv::Range(coord.y, coord.y + resolution / reduseres), cv::Range(coord.x, coord.x + resolution / reduseres));
+        sample = img(cv::Range(coord.y, coord.y + frame_resolution / reduseres), cv::Range(coord.x, coord.x + frame_resolution / reduseres));
         samples.push_back(sample);
         coords.push_back(coord);
       }
@@ -242,4 +248,11 @@ void DetectorMotionV2b(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &obj
 cv::Mat DetectorMotionV3(cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, int id_frame);
 void fixIDs(const std::vector<std::vector<Obj>>&objs, std::vector<std::pair<uint,idFix>>&fixedIds, std::vector<cv::Mat> &d_images, uint framesize=0);
 void OBJdetectsToObjs(std::vector<OBJdetect> objdetects,std::vector<Obj> &objs);
-cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, size_t id_frame, bool usedetector);
+cv::Mat DetectorMotionV2_1(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, size_t id_frame, /*std::vector<cv::Scalar> class_name_color,*/ bool usedetector);
+
+std::vector<std::pair<cv::Point2f,uint16_t>> DetectorMotionV2_1_artemis(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, size_t id_frame, bool usedetector);
+
+std::tuple<std::vector<cv::Point2f>,std::vector<cv::Point2f>,cv::Mat> detectORB(cv::Mat &im1, cv::Mat &im2, float reskoef);
+cv::Mat DetectorMotionV2_2(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, size_t id_frame, /*std::vector<cv::Scalar> class_name_color,*/ bool usedetector);
+cv::Mat DetectorMotionV2_3(std::string pathmodel, torch::DeviceType device_type, cv::Mat frame0, cv::Mat frame, std::vector<ALObject> &objects, size_t id_frame, /*std::vector<cv::Scalar> class_name_color,*/ bool usedetector);
+
