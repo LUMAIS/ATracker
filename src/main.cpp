@@ -23,121 +23,127 @@ struct ArgParser: gengetopt_args_info {
 
 int main(int argc, char **argv)
 {
-    // testtorch();
-    //./detector ../data/modules/traced_resnet_model.pt
-    //./detector ../data/modules/AnTroD_resnet50.pt
-    // testmodule(argv[1]);
-    // 
-    // // Show help
-    // if (argc <= 2 || string(argv[1]) == string("-h")) {
-    //     cout << "Usage: app [-h | (MODEL_PATH INPUT_DATA [COMP_DEV={CUDA, CPU}])]\n\n"
-    //         << "-h  - show help,\n"
-    //         << "MODEL_PATH  - path to the object detector (PyTorch ML model)\n"
-    //         << "INPUT_DATA  - path to the input image or .mp4 video file\n"
-    //         << "COMP_DEV=CPU  - computational device for the object detector {CUDA, CPU}\n";
-    //     cout << "argc: " << argc << endl;
-    //     return 0;
-    // }
+	// testtorch();
+	//./detector ../data/modules/traced_resnet_model.pt
+	//./detector ../data/modules/AnTroD_resnet50.pt
+	// testmodule(argv[1]);
+	// 
+	// // Show help
+	// if (argc <= 2 || string(argv[1]) == string("-h")) {
+	//     cout << "Usage: app [-h | (MODEL_PATH INPUT_DATA [COMP_DEV={CUDA, CPU}])]\n\n"
+	//         << "-h  - show help,\n"
+	//         << "MODEL_PATH  - path to the object detector (PyTorch ML model)\n"
+	//         << "INPUT_DATA  - path to the input image or .mp4 video file\n"
+	//         << "COMP_DEV=CPU  - computational device for the object detector {CUDA, CPU}\n";
+	//     cout << "argc: " << argc << endl;
+	//     return 0;
+	// }
 
-    ArgParser  args_info(argc, argv);
+	ArgParser  args_info(argc, argv);
 
-    torch::jit::script::Module module;
-    vector<ALObject> objects;
+	torch::jit::script::Module module;
+	vector<ALObject> objects;
 
-    string pathmodel;
-    if(args_info.model_given) {
-        pathmodel = args_info.model_arg;  // argv[1];
-        cout << "Object detector: " << pathmodel << std::endl;
+	string pathmodel;
+	if(args_info.model_given) {
+		pathmodel = args_info.model_arg;  // argv[1];
+		cout << "Object detector: " << pathmodel << std::endl;
 
-        try
-        {
-            // Deserialize the ScriptModule from a file using torch::jit::load().
-            module = torch::jit::load(pathmodel);
-        }
-        catch (const c10::Error &e)
-        {
-            std::cerr << "error loading the model\n";
-            return -1;
-        }
-    }
+		try
+		{
+			// Deserialize the ScriptModule from a file using torch::jit::load().
+			module = torch::jit::load(pathmodel);
+		}
+		catch (const c10::Error &e)
+		{
+			std::cerr << "error loading the model\n";
+			return -1;
+		}
+	}
 
-    torch::DeviceType device_type = torch::kCPU;
+	torch::DeviceType device_type = torch::kCPU;
 
-    //if (argc >= 4 && std::strstr(argv[3], "CUDA") != NULL)
-    if (args_info.cuda_flag)
-        device_type = torch::kCUDA;
+	//if (argc >= 4 && std::strstr(argv[3], "CUDA") != NULL)
+	if (args_info.cuda_flag)
+		device_type = torch::kCUDA;
 
-    //if (std::strstr(argv[2], ".mp4") != NULL)
-    if (args_info.video_given)
-    {
-        // const odir = fs::path(args_info.output_arg);
-        // const string fname = fs::path(args_info.video_arg).stem();
-        uint16_t start = args_info.frame_start_arg;  // 460
-        uint16_t nfram = args_info.frame_num_arg;  // 30; -1
+	//if (std::strstr(argv[2], ".mp4") != NULL)
+	if (args_info.video_given)
+	{
+		// const odir = fs::path(args_info.output_arg);
+		// const string fname = fs::path(args_info.video_arg).stem();
+		uint16_t start = args_info.frame_start_arg;  // 460
+		uint16_t nfram = args_info.frame_num_arg;  // 30; -1
 
-        vector<vector<Obj>> objs;
-        vector<std::pair<uint, idFix>> fixedIds;
-        vector<cv::Mat> d_images;
+		vector<vector<Obj>> objs;
+		vector<std::pair<uint, idFix>> fixedIds;
+		vector<cv::Mat> d_images;
 
-        //---TEST---
-        d_images = LoadVideo(args_info.video_arg, start, nfram);  // argv[2], start, nfram
-        cv::VideoWriter writer;
-        int codec = cv::VideoWriter::fourcc('m', 'p', '4', 'v');  // 'm', 'p', '4', 'v';  'h', '2', '6', '4'
+		//---TEST---
+		d_images = LoadVideo(args_info.video_arg, start, nfram);  // argv[2], start, nfram
+		cv::VideoWriter writer;
+		int codec = cv::VideoWriter::fourcc('m', 'p', '4', 'v');  // 'm', 'p', '4', 'v';  'h', '2', '6', '4'
 
-        const string filename = (fs::path(args_info.output_arg) / fs::path(args_info.video_arg).stem()).string() + "_" + to_string(start) + "_" + to_string(nfram);  // + dateTime();
-        double fps = 1.0;
-        cv::Mat frame;
+		string filename = (fs::path(args_info.output_arg) / fs::path(args_info.video_arg).stem()).string()
+			+ "_" + to_string(start) + "_" + to_string(nfram);  // + dateTime();
+		if(args_info.fout_suffix_given)
+			filename += string(" ") + args_info.fout_suffix_arg;
 
-        // cv::Size sizeFrame(992+extr,992);
-        // cv::Mat testimg = std::get<2>(detectORB(d_images.at(0), d_images.at(1), 2.5));
+		double fps = 1.0;
+		cv::Mat frame;
 
-        // DetectorMotionV2_1  - Detector + motion
-        // DetectorMotionV2_2  - Interactive ORB descriptors for the whole frame
-        // DetectorMotionV2_3  - Detector + ORB descriptors for the whole frame
-        cv::Mat testimg = DetectorMotionV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given);
-        // cv::Mat testimg = DetectorMotionV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given);
+		// cv::Size sizeFrame(992+extr,992);
+		// cv::Mat testimg = std::get<2>(detectORB(d_images.at(0), d_images.at(1), 2.5));
 
-        cv::Size sizeFrame(testimg.cols, testimg.rows);
+		// DetectorMotionV2_1  - Detector + motion
+		// DetectorMotionV2_2  - Interactive ORB descriptors for the whole frame
+		// DetectorMotionV2_3  - Detector + ORB descriptors for the whole frame
+		//cv::Mat testimg = DetectorMotionV3(d_images.at(0), d_images.at(1), objects, 0);
+		cv::Mat testimg = DetectorMotionV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given);
+		// cv::Mat testimg = DetectorMotionV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given);
 
-        writer.open(filename + "_demo.mp4", codec, fps, sizeFrame, true);
-        vector<ALObject> objects;
+		cv::Size sizeFrame(testimg.cols, testimg.rows);
 
-        vector<cv::Scalar> class_name_color;
-        for (size_t i = 0; i < 366; i++)
-            class_name_color.push_back(cv::Scalar(rand() % 255, rand() % 255, rand() % 255));
+		writer.open(filename + "_demo.mp4", codec, fps, sizeFrame, true);
+		vector<ALObject> objects;
 
-        for (int i = 0; i < d_images.size() - 1; i++)
-        {
-            cout << "[Frame: " << start + i << "]" << std::endl;
-            writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given));
-            // DetectorMotionV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, false);
-            // writer.write(DetectorMotionV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given));
-            // writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
-        }
-        writer.release();
-        traceObjects(objects, filename);
-        return 0;
-        //---TEST---*/
+		vector<cv::Scalar> class_name_color;
+		for (size_t i = 0; i < 366; i++)
+			class_name_color.push_back(cv::Scalar(rand() % 255, rand() % 255, rand() % 255));
 
-        d_images = LoadVideo(argv[2], start, nfram);
+		for (int i = 0; i < d_images.size() - 1; i++)
+		{
+			cout << "[Frame: " << start + i << "]" << std::endl;
+			//writer.write(DetectorMotionV3(d_images.at(i), d_images.at(i + 1), objects, start + i));
+			writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given));
+			// DetectorMotionV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, false);
+			// writer.write(DetectorMotionV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given));
+			// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
+		}
+		writer.release();
+		traceObjects(objects, filename);
+		return 0;
+		//---TEST---*/
 
-        vector<OBJdetect> obj_detects;
-        vector<Obj> objbuf;
-        for (int i = 0; i < d_images.size(); i++)
-        {
-            obj_detects.clear();
-            obj_detects = detectorV4(pathmodel, d_images.at(i), device_type);
-            OBJdetectsToObjs(obj_detects, objbuf);
-            objs.push_back(objbuf);
-        }
+		d_images = LoadVideo(argv[2], start, nfram);
 
-        fixIDs(objs, fixedIds, d_images);
-    }
-    else
-    {
-        cv::Mat imageBGR = cv::imread(args_info.img_arg, cv::ImreadModes::IMREAD_COLOR);  // argv[2]
-        detectorV4(pathmodel, imageBGR, device_type);
-    }
+		vector<OBJdetect> obj_detects;
+		vector<Obj> objbuf;
+		for (int i = 0; i < d_images.size(); i++)
+		{
+			obj_detects.clear();
+			obj_detects = detectorV4(pathmodel, d_images.at(i), device_type);
+			OBJdetectsToObjs(obj_detects, objbuf);
+			objs.push_back(objbuf);
+		}
 
-    return 0;
+		fixIDs(objs, fixedIds, d_images);
+	}
+	else
+	{
+		cv::Mat imageBGR = cv::imread(args_info.img_arg, cv::ImreadModes::IMREAD_COLOR);  // argv[2]
+		detectorV4(pathmodel, imageBGR, device_type);
+	}
+
+	return 0;
 }

@@ -42,8 +42,17 @@ struct gengetopt_args_info
   char * model_arg;	/**< @brief path to the object detector (PyTorch ML model).  */
   char * model_orig;	/**< @brief path to the object detector (PyTorch ML model) original value given at command line.  */
   const char *model_help; /**< @brief path to the object detector (PyTorch ML model) help description.  */
+  float confidence_arg;	/**< @brief confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model (default='0.32').  */
+  char * confidence_orig;	/**< @brief confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model original value given at command line.  */
+  const char *confidence_help; /**< @brief confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model help description.  */
   int cuda_flag;	/**< @brief computational device for the object detector (CUDA GPU or CPU} (default=off).  */
   const char *cuda_help; /**< @brief computational device for the object detector (CUDA GPU or CPU} help description.  */
+  char * output_arg;	/**< @brief output directory (default='.').  */
+  char * output_orig;	/**< @brief output directory original value given at command line.  */
+  const char *output_help; /**< @brief output directory help description.  */
+  char * fout_suffix_arg;	/**< @brief additional suffix for the resulting output files.  */
+  char * fout_suffix_orig;	/**< @brief additional suffix for the resulting output files original value given at command line.  */
+  const char *fout_suffix_help; /**< @brief additional suffix for the resulting output files help description.  */
   char * video_arg;	/**< @brief path to the input video.  */
   char * video_orig;	/**< @brief path to the input video original value given at command line.  */
   const char *video_help; /**< @brief path to the input video help description.  */
@@ -56,22 +65,19 @@ struct gengetopt_args_info
   int frame_num_arg;	/**< @brief the number of frames (default='-1').  */
   char * frame_num_orig;	/**< @brief the number of frames original value given at command line.  */
   const char *frame_num_help; /**< @brief the number of frames help description.  */
-  char * output_arg;	/**< @brief output directory (default='.').  */
-  char * output_orig;	/**< @brief output directory original value given at command line.  */
-  const char *output_help; /**< @brief output directory help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
   unsigned int version_given ;	/**< @brief Whether version was given.  */
   unsigned int model_given ;	/**< @brief Whether model was given.  */
+  unsigned int confidence_given ;	/**< @brief Whether confidence was given.  */
   unsigned int cuda_given ;	/**< @brief Whether cuda was given.  */
+  unsigned int output_given ;	/**< @brief Whether output was given.  */
+  unsigned int fout_suffix_given ;	/**< @brief Whether fout_suffix was given.  */
   unsigned int video_given ;	/**< @brief Whether video was given.  */
   unsigned int img_given ;	/**< @brief Whether img was given.  */
   unsigned int frame_start_given ;	/**< @brief Whether frame_start was given.  */
   unsigned int frame_num_given ;	/**< @brief Whether frame_num was given.  */
-  unsigned int output_given ;	/**< @brief Whether output was given.  */
 
-  char **inputs ; /**< @brief unnamed options (options without names) */
-  unsigned inputs_num ; /**< @brief unnamed options number */
   int input_group_counter; /**< @brief Counter for group input */
 } ;
 
