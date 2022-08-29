@@ -397,7 +397,8 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 	vector<OBJdetect> obj_detects;
 	auto millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	static torch::jit::script::Module module = torch::jit::load(pathmodel);
-	std::cout << "Load module +" << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec << "ms" << endl;
+	std::cout << "Model loading time: +" << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
+		<< "ms; " << "confidence threshold : " << confidence << endl;
 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
 	uint16_t pointsdelta = 5;

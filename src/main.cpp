@@ -89,7 +89,8 @@ int main(int argc, char **argv)
 		if(args_info.fout_suffix_given)
 			filename += string(" ") + args_info.fout_suffix_arg;
 
-		double fps = 1.0;
+		const float confidence = args_info.confidence_arg;  // dftConf
+		const double fps = 1.0;  // FPS of the forming video
 		cv::Mat frame;
 
 		// cv::Size sizeFrame(992+extr,992);
@@ -98,9 +99,8 @@ int main(int argc, char **argv)
 		// DetectorMotionV2_1  - Detector + motion
 		// DetectorMotionV2_2  - Interactive ORB descriptors for the whole frame
 		// DetectorMotionV2_3  - Detector + ORB descriptors for the whole frame
-		//cv::Mat testimg = DetectorMotionV3(d_images.at(0), d_images.at(1), objects, 0);
-		cv::Mat testimg = DetectorMotionV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given);
-		// cv::Mat testimg = DetectorMotionV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given);
+		cv::Mat testimg = DetectorMotionV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given, confidence);
+		// cv::Mat testimg = DetectorMotionV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given, confidence);
 
 		cv::Size sizeFrame(testimg.cols, testimg.rows);
 
@@ -114,10 +114,9 @@ int main(int argc, char **argv)
 		for (int i = 0; i < d_images.size() - 1; i++)
 		{
 			cout << "[Frame: " << start + i << "]" << std::endl;
-			//writer.write(DetectorMotionV3(d_images.at(i), d_images.at(i + 1), objects, start + i));
-			writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given));
-			// DetectorMotionV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, false);
-			// writer.write(DetectorMotionV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given));
+			writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given, confidence));
+			// DetectorMotionV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence);
+			// writer.write(DetectorMotionV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given, confidence));
 			// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
 		}
 		writer.release();
