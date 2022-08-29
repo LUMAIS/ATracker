@@ -67,7 +67,10 @@ Scalar class_name_color(uint32_t id, uint8_t clrLow=32, uint8_t clrHigh=223) noe
 	};
 
 	const uint8_t  clrRange = clrHigh - clrLow;
-	return id < 20 ? baseclrs[id] : Scalar(clrLow + rand() % clrRange, clrLow + rand() % clrRange, clrLow + rand() % clrRange);
+	srand(id);  // Display the same objects with the same colors on following frames
+	Scalar  clr = id < 20 ? baseclrs[id] : Scalar(clrLow + rand() % clrRange, clrLow + rand() % clrRange, clrLow + rand() % clrRange);
+	// cout << "#" << id << " color: " << clr << endl;
+	return clr;
 }
 
 uint16_t max_u16(float a, float b) noexcept  { return std::max<int16_t>(roundf(a), roundf(b)); }
@@ -464,10 +467,9 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 
 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	auto outputs = module.forward(input).toTuple();
-	// std::cout << "Processing +" << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec << "ms" << endl;
+	// cout << "module.forward(input).toTuple() - OK" << endl;
+	std::cout << "Raw object detection +" << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec << "ms" << endl;
 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
-	cout << "module.forward(input).toTuple() - OK" << endl;
 	torch::Tensor detections = outputs->elements()[0].toTensor();
 
 	// int item_attr_size = 13;
@@ -581,8 +583,8 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 		}
 	}
 
-	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	cout << "detectorV4(), detected: " << obj_detects.size() << endl;
+	// millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	return obj_detects;
 }
 
@@ -1070,7 +1072,7 @@ Mat draw_compare(ALObject obj, ALObject obj2, Scalar color)
 	return imgres;
 }
 
-Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
+Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
@@ -1555,7 +1557,7 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 	return baseimag;
 }
 
-void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame)
+void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame)
 {
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
@@ -2010,13 +2012,13 @@ void fixIDs(const vector<vector<Obj>> &objs, vector<std::pair<uint, idFix>> &fix
 
 	fixedIds.clear();
 
-	DetectorMotionV2b(d_images.at(1), d_images.at(0), objects, 0);
+	trackingMotV2b(d_images.at(1), d_images.at(0), objects, 0);
 	ALObjectsToObjs(objects, objsbuf);
 	fixedobjs.push_back(objsbuf);
 
 	for (int i = 0; i < d_images.size() - 1; i++)
 	{
-		DetectorMotionV2b(d_images.at(i), d_images.at(i + 1), objects, i + 1);
+		trackingMotV2b(d_images.at(i), d_images.at(i + 1), objects, i + 1);
 		ALObjectsToObjs(objects, objsbuf);
 		fixedobjs.push_back(objsbuf);
 	}
@@ -2548,7 +2550,7 @@ bool compare_clsobj(ClsObjR a, ClsObjR b)
 		return 0;
 }
 
-Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
+Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
@@ -3223,7 +3225,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 	return baseimag;
 }
 
-vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
+vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
@@ -3955,7 +3957,7 @@ std::tuple<vector<Point2f>, vector<Point2f>, Mat> detectORB(Mat &im1, Mat &im2, 
 	return std::make_tuple(points1, points2, imMatches);
 }
 
-Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
+Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
@@ -4751,7 +4753,7 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 	return baseimag;
 }
 
-Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
+Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;

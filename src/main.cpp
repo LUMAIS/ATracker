@@ -96,11 +96,11 @@ int main(int argc, char **argv)
 		// cv::Size sizeFrame(992+extr,992);
 		// cv::Mat testimg = std::get<2>(detectORB(d_images.at(0), d_images.at(1), 2.5));
 
-		// DetectorMotionV2_1  - Detector + motion
-		// DetectorMotionV2_2  - Interactive ORB descriptors for the whole frame
-		// DetectorMotionV2_3  - Detector + ORB descriptors for the whole frame
-		cv::Mat testimg = DetectorMotionV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
-		// cv::Mat testimg = DetectorMotionV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
+		// trackingMotV2_1  - Detector + motion
+		// trackingMotV2_2  - Interactive ORB descriptors for the whole frame
+		// trackingMotV2_3  - Detector + ORB descriptors for the whole frame
+		cv::Mat testimg = trackingMotV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
+		// cv::Mat testimg = trackingMotV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
 
 		cv::Size sizeFrame(testimg.cols, testimg.rows);
 
@@ -110,9 +110,9 @@ int main(int argc, char **argv)
 		for (int i = 0; i < d_images.size() - 1; i++)
 		{
 			cout << "[Frame: " << start + i << "]" << std::endl;
-			writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
-			// DetectorMotionV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence);
-			// writer.write(DetectorMotionV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
+			writer.write(trackingMotV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
+			// trackingMotV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence);
+			// writer.write(trackingMotV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
 			// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
 		}
 		writer.release();

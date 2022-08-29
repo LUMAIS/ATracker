@@ -277,17 +277,17 @@ vector<Point2f> detectorT(torch::jit::script::Module module, Mat imageBGR, torch
 vector<Mat> LoadVideo(const string &paths, uint16_t startframe, uint16_t getframes);
 vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType device_type, float confidence=dftConf);  // 0.5; latest version with CUDA support
 Point2f cluster_center(vector<Point2f> cluster_points);
-Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
-void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame);
+Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
+void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame);
 void fixIDs(const vector<vector<Obj>>&objs, vector<std::pair<uint,idFix>>&fixedIds, vector<Mat> &d_images, uint framesize=0);
 void OBJdetectsToObjs(vector<OBJdetect> objdetects,vector<Obj> &objs);
-Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
+Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
 
-vector<std::pair<Point2f,uint16_t>> DetectorMotionV2_1_artemis(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
+vector<std::pair<Point2f,uint16_t>> trackingMotV2_1_artemis(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
 
 std::tuple<vector<Point2f>,vector<Point2f>,Mat> detectORB(Mat &im1, Mat &im2, float reskoef);
-Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
-Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
+Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
+Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
 
 /// Get current datetime in the format YYYY-MM-DD_HH-mm-ss
 string dateTime();
