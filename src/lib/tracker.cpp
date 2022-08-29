@@ -362,7 +362,7 @@ vector<OBJdetect> detectorV4_old(string pathmodel, Mat frame, torch::DeviceType 
 			OBJdetect obj_buf;
 
 			obj_buf.detect = detectsCent.at(i);
-			obj_buf.rectangle = detectsRect.at(i);
+			obj_buf.obj_size = detectsRect.at(i);
 			obj_buf.type = class_name[Objtype.at(i)];
 			obj_detects.push_back(obj_buf);
 
@@ -529,7 +529,7 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 			OBJdetect obj_buf;
 
 			obj_buf.detect = detectsCent.at(i);
-			obj_buf.rectangle = detectsRect.at(i);
+			obj_buf.obj_size = detectsRect.at(i);
 			obj_buf.type = class_name[Objtype.at(i)];
 			obj_detects.push_back(obj_buf);
 
@@ -1127,7 +1127,7 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 			ALObject obj(objects.size(), detects.at(i).type, cluster_points, img);
 			obj.model_center = detects.at(i).detect;
 			obj.cluster_center = detects.at(i).detect;
-			obj.rectangle = detects.at(i).rectangle;
+			obj.obj_size = detects.at(i).obj_size;
 			// obj.track_points.push_back(detects.at(i).detect);
 			// obj.push_track_point(detects.at(i).detect);
 
@@ -1159,19 +1159,19 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 				auto& tobj = objects.at(n);
 				tobj.cluster_center = obj.model_center;
 				tobj.model_center = obj.model_center;
-				tobj.rectangle = obj.rectangle;
+				tobj.obj_size = obj.obj_size;
 				// tobj.track_points.push_back(obj.cluster_center);
 				// tobj.push_track_point(obj.cluster_center);
 				tobj.img = obj.img;
 				// assert(!tobj.traces.empty() && tobj.traces.back().frame < id_frame && "Unexpected frame number in the traces");
 				tobj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-					, obj.rectangle.x, obj.rectangle.y});
+					, obj.obj_size.x, obj.obj_size.y});
 			}
 			else
 			{
 				assert(obj.traces.empty() && "Unexpected traces");
 				obj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-					, obj.rectangle.x, obj.rectangle.y});
+					, obj.obj_size.x, obj.obj_size.y});
 				objects.push_back(obj);  // New object
 			}
 		}
@@ -1287,7 +1287,7 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 				if (i < 0)
 					break;
 
-				if ((motion.at(i).x < (objects[j].model_center.x + objects[j].rectangle.x / 2)) && (motion.at(i).x > (objects[j].model_center.x - objects[j].rectangle.x / 2)) && (motion.at(i).y < (objects[j].model_center.y + objects[j].rectangle.y / 2)) && (motion.at(i).y > (objects[j].model_center.y - objects[j].rectangle.y / 2)))
+				if ((motion.at(i).x < (objects[j].model_center.x + objects[j].obj_size.x / 2)) && (motion.at(i).x > (objects[j].model_center.x - objects[j].obj_size.x / 2)) && (motion.at(i).y < (objects[j].model_center.y + objects[j].obj_size.y / 2)) && (motion.at(i).y > (objects[j].model_center.y - objects[j].obj_size.y / 2)))
 				{
 					objects[j].cluster_points.push_back(motion.at(i));
 					motion.erase(motion.begin() + i);
@@ -1485,11 +1485,11 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 
 		if (objects.at(i).model_center.x > -1) // visualization of the classifier
 		{
-			pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
-			pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;
+			pt1.x = objects.at(i).model_center.x - objects.at(i).obj_size.x / 2;
+			pt1.y = objects.at(i).model_center.y - objects.at(i).obj_size.y / 2;
 
-			pt2.x = objects.at(i).model_center.x + objects.at(i).rectangle.x / 2;
-			pt2.y = objects.at(i).model_center.y + objects.at(i).rectangle.y / 2;
+			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
+			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
 			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
 		}
@@ -1714,7 +1714,7 @@ void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t 
 				if (i < 0)
 					break;
 
-				if ((motion.at(i).x < (objects[j].model_center.x + objects[j].rectangle.x / 2)) && (motion.at(i).x > (objects[j].model_center.x - objects[j].rectangle.x / 2)) && (motion.at(i).y < (objects[j].model_center.y + objects[j].rectangle.y / 2)) && (motion.at(i).y > (objects[j].model_center.y - objects[j].rectangle.y / 2)))
+				if ((motion.at(i).x < (objects[j].model_center.x + objects[j].obj_size.x / 2)) && (motion.at(i).x > (objects[j].model_center.x - objects[j].obj_size.x / 2)) && (motion.at(i).y < (objects[j].model_center.y + objects[j].obj_size.y / 2)) && (motion.at(i).y > (objects[j].model_center.y - objects[j].obj_size.y / 2)))
 				{
 					objects[j].cluster_points.push_back(motion.at(i));
 					motion.erase(motion.begin() + i);
@@ -1912,11 +1912,11 @@ void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t 
 
 		if (objects.at(i).model_center.x > -1) // visualization of the classifier
 		{
-			pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
-			pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;
+			pt1.x = objects.at(i).model_center.x - objects.at(i).obj_size.x / 2;
+			pt1.y = objects.at(i).model_center.y - objects.at(i).obj_size.y / 2;
 
-			pt2.x = objects.at(i).model_center.x + objects.at(i).rectangle.x / 2;
-			pt2.y = objects.at(i).model_center.y + objects.at(i).rectangle.y / 2;
+			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
+			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
 			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
 		}
@@ -1985,8 +1985,8 @@ void OBJdetectsToObjs(vector<OBJdetect> objdetects, vector<Obj> &objs)
 		objbuf.id = i;                           // Object id
 		objbuf.x = objdetects.at(i).detect.x;    // Center x of the bounding box
 		objbuf.y = objdetects.at(i).detect.y;    // Center y of the bounding box
-		objbuf.w = objdetects.at(i).rectangle.x; // Width of the bounding box
-		objbuf.h = objdetects.at(i).rectangle.y; // Height of the bounding box
+		objbuf.w = objdetects.at(i).obj_size.x; // Width of the bounding box
+		objbuf.h = objdetects.at(i).obj_size.y; // Height of the bounding box
 
 		objs.push_back(objbuf);
 	}
@@ -2664,7 +2664,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 			ALObject obj(objects.size(), detects.at(i).type, cluster_points, img);
 			obj.model_center = detects.at(i).detect;
 			obj.cluster_center = detects.at(i).detect;
-			obj.rectangle = detects.at(i).rectangle;
+			obj.obj_size = detects.at(i).obj_size;
 			obj.det_mc = true;
 			// obj.track_points.push_back(detects.at(i).detect);
 			// obj.push_track_point(detects.at(i).detect);
@@ -2704,20 +2704,20 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 				//   Mat  dimg(frame.rows, frame.cols, CV_8UC3);
 				//   cv::cvtColor(frame, dimg, cv::COLOR_GRAY2BGR);
 				//   //frame.convertTo(dimg, CV_8UC3);
-				//   rectangle(dimg, Point(roundf(tobj.model_center.x - tobj.rectangle.x/2.f)-1, roundf(tobj.model_center.y - tobj.rectangle.y/2.f)-1)
-				//     , Point(roundf(tobj.model_center.x + tobj.rectangle.x/2.f)+1, roundf(tobj.model_center.y + tobj.rectangle.y/2.f)+1), Scalar(255, 0, 0), 1);
-				//   rectangle(dimg, Point(roundf(obj.model_center.x - obj.rectangle.x/2.f)+1, roundf(obj.model_center.y - obj.rectangle.y/2.f)+1)
-				//     , Point(roundf(obj.model_center.x + obj.rectangle.x/2.f)-1, roundf(obj.model_center.y + obj.rectangle.y/2.f)-1), Scalar(0, 255, 0), 1);
+				//   rectangle(dimg, Point(roundf(tobj.model_center.x - tobj.obj_size.x/2.f)-1, roundf(tobj.model_center.y - tobj.obj_size.y/2.f)-1)
+				//     , Point(roundf(tobj.model_center.x + tobj.obj_size.x/2.f)+1, roundf(tobj.model_center.y + tobj.obj_size.y/2.f)+1), Scalar(255, 0, 0), 1);
+				//   rectangle(dimg, Point(roundf(obj.model_center.x - obj.obj_size.x/2.f)+1, roundf(obj.model_center.y - obj.obj_size.y/2.f)+1)
+				//     , Point(roundf(obj.model_center.x + obj.obj_size.x/2.f)-1, roundf(obj.model_center.y + obj.obj_size.y/2.f)-1), Scalar(0, 255, 0), 1);
 				//   imshow("Occlusion", dimg);
 				//   cv::waitKey(500);
 				// }
 				tobj.model_center = obj.model_center;
-				tobj.rectangle = obj.rectangle;
+				tobj.obj_size = obj.obj_size;
 				tobj.img = obj.img;
 				tobj.det_mc = true;
 				// assert(!tobj.traces.empty() && tobj.traces.back().frame < id_frame && "Unexpected frame number in the traces");
 				tobj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-					, obj.rectangle.x, obj.rectangle.y});
+					, obj.obj_size.x, obj.obj_size.y});
 			}
 			else
 			{
@@ -2738,7 +2738,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 				if (newobj == true) {
 					assert(obj.traces.empty() && "Unexpected traces");
 					obj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-						, obj.rectangle.x, obj.rectangle.y});
+						, obj.obj_size.x, obj.obj_size.y});
 					objects.push_back(obj);
 				}
 			}
@@ -2946,11 +2946,11 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 				{
 					Point2f clustercenter = cluster_center(clusters[cls_id]);
 					auto& cobj = objects[obj_id];
-					pt1.x = cobj.model_center.x - cobj.rectangle.x / 2;
-					pt1.y = cobj.model_center.y - cobj.rectangle.y / 2;
+					pt1.x = cobj.model_center.x - cobj.obj_size.x / 2;
+					pt1.y = cobj.model_center.y - cobj.obj_size.y / 2;
 
-					pt2.x = cobj.model_center.x + cobj.rectangle.x / 2;
-					pt2.y = cobj.model_center.y + cobj.rectangle.y / 2;
+					pt2.x = cobj.model_center.x + cobj.obj_size.x / 2;
+					pt2.y = cobj.model_center.y + cobj.obj_size.y / 2;
 
 					if (pt1.x < clustercenter.x && clustercenter.x < pt2.x && pt1.y < clustercenter.y && clustercenter.y < pt2.y)
 					{
@@ -3044,7 +3044,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 				ALObject obj(objects.size(), "a", clusters[cls_id], img);
 				assert(obj.traces.empty() && "Unexpected traces");
 				obj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-						, obj.rectangle.x, obj.rectangle.y});
+						, obj.obj_size.x, obj.obj_size.y});
 				objects.push_back(obj);
 				for (size_t j = 0; j < clsobjrs.size(); j++)
 				{
@@ -3118,7 +3118,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 				ALObject obj(objects.size(), "a", clusters[cls], img);
 				assert(obj.traces.empty() && "Unexpected traces");
 				obj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-						, obj.rectangle.x, obj.rectangle.y});
+						, obj.obj_size.x, obj.obj_size.y});
 				objects.push_back(obj);
 				clusters.erase(clusters.begin() + cls);
 				cls--;
@@ -3206,11 +3206,11 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
 		{
-			pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
-			pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;
+			pt1.x = objects.at(i).model_center.x - objects.at(i).obj_size.x / 2;
+			pt1.y = objects.at(i).model_center.y - objects.at(i).obj_size.y / 2;
 
-			pt2.x = objects.at(i).model_center.x + objects.at(i).rectangle.x / 2;
-			pt2.y = objects.at(i).model_center.y + objects.at(i).rectangle.y / 2;
+			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
+			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
 			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
 		}
@@ -3365,7 +3365,7 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 			ALObject obj(objects.size(), detects.at(i).type, cluster_points, img);
 			obj.model_center = detects.at(i).detect;
 			obj.cluster_center = detects.at(i).detect;
-			obj.rectangle = detects.at(i).rectangle;
+			obj.obj_size = detects.at(i).obj_size;
 			obj.det_mc = true;
 			// obj.track_points.push_back(detects.at(i).detect);
 			// obj.push_track_point(detects.at(i).detect);
@@ -3401,12 +3401,12 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 			{
 				auto& tobj = objects.at(n);
 				tobj.model_center = obj.model_center;
-				tobj.rectangle = obj.rectangle;
+				tobj.obj_size = obj.obj_size;
 				tobj.img = obj.img;
 				tobj.det_mc = true;
 				// assert(!tobj.traces.empty() && tobj.traces.back().frame < id_frame && "Unexpected frame number in the traces");
 				tobj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-					, obj.rectangle.x, obj.rectangle.y});
+					, obj.obj_size.x, obj.obj_size.y});
 			}
 			else
 			{
@@ -3616,11 +3616,11 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 				{
 					Point2f clustercenter = cluster_center(clusters[cls_id]);
 					auto& cobj = objects[obj_id];
-					pt1.x = cobj.model_center.x - cobj.rectangle.x / 2;
-					pt1.y = cobj.model_center.y - cobj.rectangle.y / 2;
+					pt1.x = cobj.model_center.x - cobj.obj_size.x / 2;
+					pt1.y = cobj.model_center.y - cobj.obj_size.y / 2;
 
-					pt2.x = cobj.model_center.x + cobj.rectangle.x / 2;
-					pt2.y = cobj.model_center.y + cobj.rectangle.y / 2;
+					pt2.x = cobj.model_center.x + cobj.obj_size.x / 2;
+					pt2.y = cobj.model_center.y + cobj.obj_size.y / 2;
 
 					if (pt1.x < clustercenter.x && clustercenter.x < pt2.x && pt1.y < clustercenter.y && clustercenter.y < pt2.y)
 					{
@@ -3869,11 +3869,11 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
 		{
-			pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
-			pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;
+			pt1.x = objects.at(i).model_center.x - objects.at(i).obj_size.x / 2;
+			pt1.y = objects.at(i).model_center.y - objects.at(i).obj_size.y / 2;
 
-			pt2.x = objects.at(i).model_center.x + objects.at(i).rectangle.x / 2;
-			pt2.y = objects.at(i).model_center.y + objects.at(i).rectangle.y / 2;
+			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
+			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
 			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
 		}
@@ -4126,7 +4126,7 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 			ALObject obj(objects.size(), detects.at(i).type, cluster_points, img);
 			obj.model_center = detects.at(i).detect;
 			obj.cluster_center = detects.at(i).detect;
-			obj.rectangle = detects.at(i).rectangle;
+			obj.obj_size = detects.at(i).obj_size;
 			obj.det_mc = true;
 			// obj.track_points.push_back(detects.at(i).detect);
 			// obj.push_track_point(detects.at(i).detect);
@@ -4162,12 +4162,12 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 			{
 				auto& tobj = objects.at(n);
 				tobj.model_center = obj.model_center;
-				tobj.rectangle = obj.rectangle;
+				tobj.obj_size = obj.obj_size;
 				tobj.img = obj.img;
 				tobj.det_mc = true;
 				// assert(!tobj.traces.empty() && tobj.traces.back().frame < id_frame && "Unexpected frame number in the traces");
 				tobj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-					, obj.rectangle.x, obj.rectangle.y});
+					, obj.obj_size.x, obj.obj_size.y});
 			}
 			else
 			{
@@ -4435,11 +4435,11 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 				{
 					Point2f clustercenter = cluster_center(clusters[cls_id]);
 					auto& cobj = objects.at(obj_id);
-					pt1.x = cobj.model_center.x - cobj.rectangle.x / 2;
-					pt1.y = cobj.model_center.y - cobj.rectangle.y / 2;
+					pt1.x = cobj.model_center.x - cobj.obj_size.x / 2;
+					pt1.y = cobj.model_center.y - cobj.obj_size.y / 2;
 
-					pt2.x = cobj.model_center.x + cobj.rectangle.x / 2;
-					pt2.y = cobj.model_center.y + cobj.rectangle.y / 2;
+					pt2.x = cobj.model_center.x + cobj.obj_size.x / 2;
+					pt2.y = cobj.model_center.y + cobj.obj_size.y / 2;
 
 					if (pt1.x < clustercenter.x && clustercenter.x < pt2.x && pt1.y < clustercenter.y && clustercenter.y < pt2.y)
 					{
@@ -4772,11 +4772,11 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
 		{
-			pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
-			pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;
+			pt1.x = objects.at(i).model_center.x - objects.at(i).obj_size.x / 2;
+			pt1.y = objects.at(i).model_center.y - objects.at(i).obj_size.y / 2;
 
-			pt2.x = objects.at(i).model_center.x + objects.at(i).rectangle.x / 2;
-			pt2.y = objects.at(i).model_center.y + objects.at(i).rectangle.y / 2;
+			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
+			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
 			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
 		}
@@ -4945,7 +4945,7 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 			ALObject obj(objects.size(), detects.at(i).type, cluster_points, img);
 			obj.model_center = detects.at(i).detect;
 			obj.cluster_center = detects.at(i).detect;
-			obj.rectangle = detects.at(i).rectangle;
+			obj.obj_size = detects.at(i).obj_size;
 			obj.det_mc = true;
 			// obj.track_points.push_back(detects.at(i).detect);
 			// obj.push_track_point(detects.at(i).detect);
@@ -4981,12 +4981,12 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 			{
 				auto& tobj = objects.at(n);
 				tobj.model_center = obj.model_center;
-				tobj.rectangle = obj.rectangle;
+				tobj.obj_size = obj.obj_size;
 				tobj.img = obj.img;
 				tobj.det_mc = true;
 				// assert(!tobj.traces.empty() && tobj.traces.back().frame < id_frame && "Unexpected frame number in the traces");
 				tobj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
-					, obj.rectangle.x, obj.rectangle.y});
+					, obj.obj_size.x, obj.obj_size.y});
 			}
 			else
 			{
@@ -5237,11 +5237,11 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 				{
 					Point2f clustercenter = cluster_center(clusters[cls_id]);
 					auto& cobj = objects[obj_id];
-					pt1.x = cobj.model_center.x - cobj.rectangle.x / 2;
-					pt1.y = cobj.model_center.y - cobj.rectangle.y / 2;
+					pt1.x = cobj.model_center.x - cobj.obj_size.x / 2;
+					pt1.y = cobj.model_center.y - cobj.obj_size.y / 2;
 
-					pt2.x = cobj.model_center.x + cobj.rectangle.x / 2;
-					pt2.y = cobj.model_center.y + cobj.rectangle.y / 2;
+					pt2.x = cobj.model_center.x + cobj.obj_size.x / 2;
+					pt2.y = cobj.model_center.y + cobj.obj_size.y / 2;
 
 					if (pt1.x < clustercenter.x && clustercenter.x < pt2.x && pt1.y < clustercenter.y && clustercenter.y < pt2.y)
 					{
@@ -5558,11 +5558,11 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
 		{
-			pt1.x = objects.at(i).model_center.x - objects.at(i).rectangle.x / 2;
-			pt1.y = objects.at(i).model_center.y - objects.at(i).rectangle.y / 2;
+			pt1.x = objects.at(i).model_center.x - objects.at(i).obj_size.x / 2;
+			pt1.y = objects.at(i).model_center.y - objects.at(i).obj_size.y / 2;
 
-			pt2.x = objects.at(i).model_center.x + objects.at(i).rectangle.x / 2;
-			pt2.y = objects.at(i).model_center.y + objects.at(i).rectangle.y / 2;
+			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
+			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
 			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
 		}

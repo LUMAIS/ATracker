@@ -91,7 +91,7 @@ public:
 	bool det_mc = false;
 
 	vector<Point2f> track_points;
-	Point2f rectangle;  // w, h
+	Point2f obj_size;  // w, h
 	Mat img;
 
 	vector<Mat> samples;
@@ -163,7 +163,7 @@ public:
 				traces.back().center.y = roundf(cluster_center.y);
 			} else {
 				assert((traces.empty() || traces.back().frame < frame_id) && "Unexpected frame number in the traces");
-				traces.push_back(Trace{frame_id, cluster_center.x, cluster_center.y, rectangle.x, rectangle.y});
+				traces.push_back(Trace{frame_id, cluster_center.x, cluster_center.y, obj_size.x, obj_size.y});
 			}
 		}
 
@@ -228,7 +228,7 @@ class OBJdetect
 {
 public:
 	Point2f detect;  // x, y
-	Point2f rectangle;  // w, h
+	Point2f obj_size;  // w, h
 	string type;
 };
 
