@@ -99,24 +99,20 @@ int main(int argc, char **argv)
 		// DetectorMotionV2_1  - Detector + motion
 		// DetectorMotionV2_2  - Interactive ORB descriptors for the whole frame
 		// DetectorMotionV2_3  - Detector + ORB descriptors for the whole frame
-		cv::Mat testimg = DetectorMotionV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given, confidence);
-		// cv::Mat testimg = DetectorMotionV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, /*class_name_color,*/ args_info.model_given, confidence);
+		cv::Mat testimg = DetectorMotionV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
+		// cv::Mat testimg = DetectorMotionV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
 
 		cv::Size sizeFrame(testimg.cols, testimg.rows);
 
 		writer.open(filename + "_demo.mp4", codec, fps, sizeFrame, true);
 		vector<ALObject> objects;
 
-		vector<cv::Scalar> class_name_color;
-		for (size_t i = 0; i < 366; i++)
-			class_name_color.push_back(cv::Scalar(rand() % 255, rand() % 255, rand() % 255));
-
 		for (int i = 0; i < d_images.size() - 1; i++)
 		{
 			cout << "[Frame: " << start + i << "]" << std::endl;
-			writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given, confidence));
+			writer.write(DetectorMotionV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
 			// DetectorMotionV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence);
-			// writer.write(DetectorMotionV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, /*class_name_color,*/ args_info.model_given, confidence));
+			// writer.write(DetectorMotionV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
 			// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
 		}
 		writer.release();

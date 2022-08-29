@@ -40,6 +40,36 @@ string class_name[] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};  // cla
 // //                         "pupa": 6,
 // //                         "barcode": 7} #,"uncategorized": 8}
 
+Scalar class_name_color(uint32_t id, uint8_t clrLow=32, uint8_t clrHigh=223) noexcept
+{
+	// Scalar class_name_color[9] = {Scalar(255, 0, 0), Scalar(0, 0, 255), Scalar(0, 255, 0), Scalar(255, 0, 255), Scalar(0, 255, 255), Scalar(255, 255, 0), Scalar(255, 255, 255), Scalar(200, 0, 200), Scalar(100, 0, 255)};
+	static Scalar  baseclrs[20] = {
+			Scalar(255, 0, 0),
+			Scalar(0, 20, 200),
+			Scalar(0, 255, 0),
+			Scalar(255, 0, 255),
+			Scalar(0, 255, 255),
+			Scalar(255, 255, 0),
+			Scalar(255, 255, 255),
+			Scalar(200, 0, 200),
+			Scalar(100, 0, 255),
+			Scalar(255, 0, 100),
+			Scalar(30, 20, 200),
+			Scalar(25, 255, 0),
+			Scalar(255, 44, 255),
+			Scalar(88, 255, 255),
+			Scalar(255, 255, 39),
+			Scalar(255, 255, 255),
+			Scalar(200, 46, 200),
+			Scalar(100, 79, 255),
+			Scalar(200, 46, 150),
+			Scalar(140, 70, 205),
+	};
+
+	const uint8_t  clrRange = clrHigh - clrLow;
+	return id < 20 ? baseclrs[id] : Scalar(clrLow + rand() % clrRange, clrLow + rand() % clrRange, clrLow + rand() % clrRange);
+}
+
 uint16_t max_u16(float a, float b) noexcept  { return std::max<int16_t>(roundf(a), roundf(b)); }
 uint16_t min_u16(float a, float b) noexcept  { return std::min<int16_t>(roundf(a), roundf(b)); }
 
@@ -246,8 +276,6 @@ vector<OBJdetect> detectorV4_old(string pathmodel, Mat frame, torch::DeviceType 
 	vector<Point2f> detectsCent;
 	vector<Point2f> detectsRect;
 	vector<uint8_t> Objtype;
-
-	Scalar class_name_color[9] = {Scalar(255, 0, 0), Scalar(0, 0, 255), Scalar(0, 255, 0), Scalar(255, 0, 255), Scalar(0, 255, 255), Scalar(255, 255, 0), Scalar(255, 255, 255), Scalar(200, 0, 200), Scalar(100, 0, 255)};
 	Mat imageBGR;
 
 	// imageBGR = frame_resizing(frame);
@@ -376,14 +404,14 @@ vector<OBJdetect> detectorV4_old(string pathmodel, Mat frame, torch::DeviceType 
 			ptext.x = detectsCent.at(i).x - 5;
 			ptext.y = detectsCent.at(i).y + 5;
 
-			rectangle(imageBGR, pt1, pt2, class_name_color[Objtype.at(i)], 1);
+			rectangle(imageBGR, pt1, pt2, class_name_color(Objtype.at(i)), 1);
 
 			cv::putText(imageBGR,                  // target image
 									class_name[Objtype.at(i)], // text
 									ptext,                     // top-left position
 									1,
 									0.8,
-									class_name_color[Objtype.at(i)], // font color
+									class_name_color(Objtype.at(i)), // font color
 									1);
 		}
 	}
@@ -406,8 +434,6 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 	vector<Point2f> detectsCent;
 	vector<Point2f> detectsRect;
 	vector<uint8_t> Objtype;
-
-	Scalar class_name_color[9] = {Scalar(255, 0, 0), Scalar(0, 0, 255), Scalar(0, 255, 0), Scalar(255, 0, 255), Scalar(0, 255, 255), Scalar(255, 255, 0), Scalar(255, 255, 255), Scalar(200, 0, 200), Scalar(100, 0, 255)};
 	Mat imageBGR;
 
 	// imageBGR = frame_resizing(frame);
@@ -543,14 +569,14 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 			ptext.x = detectsCent.at(i).x - 5;
 			ptext.y = detectsCent.at(i).y + 5;
 
-			rectangle(imageBGR, pt1, pt2, class_name_color[Objtype.at(i)], 1);
+			rectangle(imageBGR, pt1, pt2, class_name_color(Objtype.at(i)), 1);
 
 			cv::putText(imageBGR,                  // target image
 									class_name[Objtype.at(i)], // text
 									ptext,                     // top-left position
 									1,
 									0.8,
-									class_name_color[Objtype.at(i)], // font color
+									class_name_color(Objtype.at(i)), // font color
 									1);
 		}
 	}
@@ -839,10 +865,6 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 			}
 		}
 
-		size_t R = rand() % 255;
-		size_t G = rand() % 255;
-		size_t B = rand() % 255;
-
 		std::cout << "minnp - " << minnp << endl;
 
 		Mat imgsm = obj2.samples.at(ns2);
@@ -859,11 +881,13 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 		std::cout << "c_cir.y - " << c_cir.y << endl;
 		std::cout << "c_cir.x - " << c_cir.x << endl;
 		std::cout << "half_imgsize - " << half_imgsize << endl;
+		// Scalar  objClr = Scalar(rand() % 255, rand() % 255, rand() % 255);
+		Scalar  objClr = class_name_color(obj.id);
 
 		if (c_cir.y < 0 || c_cir.x < 0 || c_cir.y > 2 * half_imgsize * wh / (2 * half_imgsize) || c_cir.x > 2 * half_imgsize * wh / (2 * half_imgsize))
 			goto dell;
 
-		cv::circle(imag, c_cir, 3, Scalar(R, G, B), 1);
+		cv::circle(imag, c_cir, 3, objClr, 1);
 
 		// imgsm.copyTo(imag(cv::Rect(bufp.x, bufp.y, imgsm.cols, imgsm.rows)));
 
@@ -873,7 +897,7 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 		pt2.x = bufp.x + hp;
 		pt2.y = bufp.y + hp;
 
-		rectangle(imag, pt1, pt2, Scalar(R, G, B), 1);
+		rectangle(imag, pt1, pt2, objClr, 1);
 
 		//---
 
@@ -887,7 +911,7 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 		pt2.x = bufp.x + hp;
 		pt2.y = bufp.y + hp;
 
-		rectangle(imag2, pt1, pt2, Scalar(R, G, B), 1);
+		rectangle(imag2, pt1, pt2, objClr, 1);
 
 		imag.copyTo(imgres(cv::Rect(0, 0, wh, wh)));
 		imag2.copyTo(imgres(cv::Rect(wh, 0, wh, wh)));
@@ -1048,29 +1072,6 @@ Mat draw_compare(ALObject obj, ALObject obj2, Scalar color)
 
 Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
-	Scalar class_name_color[20] = {
-			Scalar(255, 0, 0),
-			Scalar(0, 20, 200),
-			Scalar(0, 255, 0),
-			Scalar(255, 0, 255),
-			Scalar(0, 255, 255),
-			Scalar(255, 255, 0),
-			Scalar(255, 255, 255),
-			Scalar(200, 0, 200),
-			Scalar(100, 0, 255),
-			Scalar(255, 0, 100),
-			Scalar(30, 20, 200),
-			Scalar(25, 255, 0),
-			Scalar(255, 44, 255),
-			Scalar(88, 255, 255),
-			Scalar(255, 255, 39),
-			Scalar(255, 255, 255),
-			Scalar(200, 46, 200),
-			Scalar(100, 79, 255),
-			Scalar(200, 46, 150),
-			Scalar(140, 70, 205),
-	};
-
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
 	vector<Mat> imgs;
@@ -1480,7 +1481,7 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).model_center.x > -1) // visualization of the classifier
@@ -1491,11 +1492,11 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
 	}
 	//--------------</visualization>-------------------------
 
@@ -1515,7 +1516,7 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color[objects.at(i).id], // font color
+								class_name_color(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -1526,7 +1527,7 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -1547,7 +1548,7 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 		al_objs.push_back(objects.at(1));
 		if (al_objs.size() > 1)
 		{
-			draw_compare(al_objs.at(al_objs.size() - 2), al_objs.at(al_objs.size() - 1), class_name_color[al_objs.at(0).id]);
+			draw_compare(al_objs.at(al_objs.size() - 2), al_objs.at(al_objs.size() - 1), class_name_color(al_objs.at(0).id));
 		}
 	*/
 
@@ -1556,29 +1557,6 @@ Mat DetectorMotionV2(string pathmodel, torch::DeviceType device_type, Mat frame0
 
 void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame)
 {
-	Scalar class_name_color[20] = {
-			Scalar(255, 0, 0),
-			Scalar(0, 20, 200),
-			Scalar(0, 255, 0),
-			Scalar(255, 0, 255),
-			Scalar(0, 255, 255),
-			Scalar(255, 255, 0),
-			Scalar(255, 255, 255),
-			Scalar(200, 0, 200),
-			Scalar(100, 0, 255),
-			Scalar(255, 0, 100),
-			Scalar(30, 20, 200),
-			Scalar(25, 255, 0),
-			Scalar(255, 44, 255),
-			Scalar(88, 255, 255),
-			Scalar(255, 255, 39),
-			Scalar(255, 255, 255),
-			Scalar(200, 46, 200),
-			Scalar(100, 79, 255),
-			Scalar(200, 46, 150),
-			Scalar(140, 70, 205),
-	};
-
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
 	vector<Mat> imgs;
@@ -1907,7 +1885,7 @@ void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t 
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).model_center.x > -1) // visualization of the classifier
@@ -1918,11 +1896,11 @@ void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t 
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
 	}
 	//--------------</visualization>-------------------------
 
@@ -1942,7 +1920,7 @@ void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t 
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color[objects.at(i).id], // font color
+								class_name_color(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -1953,7 +1931,7 @@ void DetectorMotionV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t 
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -2570,31 +2548,8 @@ bool compare_clsobj(ClsObjR a, ClsObjR b)
 		return 0;
 }
 
-Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, /*vector<Scalar> class_name_color,*/ bool usedetector, float confidence)
+Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
-	Scalar class_name_color[20] = {
-			Scalar(255, 0, 0),
-			Scalar(0, 20, 200),
-			Scalar(0, 255, 0),
-			Scalar(255, 0, 255),
-			Scalar(0, 255, 255),
-			Scalar(255, 255, 0),
-			Scalar(255, 255, 255),
-			Scalar(200, 0, 200),
-			Scalar(100, 0, 255),
-			Scalar(255, 0, 100),
-			Scalar(30, 20, 200),
-			Scalar(25, 255, 0),
-			Scalar(255, 44, 255),
-			Scalar(88, 255, 255),
-			Scalar(255, 255, 39),
-			Scalar(255, 255, 255),
-			Scalar(200, 46, 200),
-			Scalar(100, 79, 255),
-			Scalar(200, 46, 150),
-			Scalar(140, 70, 205),
-	};
-
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
 	vector<Mat> imgs;
@@ -3201,7 +3156,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -3212,11 +3167,11 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
 	}
 	// std::cout << "</visualization>" << endl;
 	//--------------</visualization>-------------------------
@@ -3237,7 +3192,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color[objects.at(i).id], // font color
+								class_name_color(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -3248,7 +3203,7 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -3270,29 +3225,6 @@ Mat DetectorMotionV2_1(string pathmodel, torch::DeviceType device_type, Mat fram
 
 vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
-	Scalar class_name_color[20] = {
-			Scalar(255, 0, 0),
-			Scalar(0, 20, 200),
-			Scalar(0, 255, 0),
-			Scalar(255, 0, 255),
-			Scalar(0, 255, 255),
-			Scalar(255, 255, 0),
-			Scalar(255, 255, 255),
-			Scalar(200, 0, 200),
-			Scalar(100, 0, 255),
-			Scalar(255, 0, 100),
-			Scalar(30, 20, 200),
-			Scalar(25, 255, 0),
-			Scalar(255, 44, 255),
-			Scalar(88, 255, 255),
-			Scalar(255, 255, 39),
-			Scalar(255, 255, 255),
-			Scalar(200, 46, 200),
-			Scalar(100, 79, 255),
-			Scalar(200, 46, 150),
-			Scalar(140, 70, 205),
-	};
-
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
 	vector<Mat> imgs;
@@ -3864,7 +3796,7 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 			pt2.x = objects.at(i).cluster_points.at(j).x + (float)rows / (float)reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + (float)rows / (float)reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -3875,11 +3807,11 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
 	}
 	//--------------</visualization>-------------------------
 
@@ -3898,7 +3830,7 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color[objects.at(i).id], // font color
+								class_name_color(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -3909,7 +3841,7 @@ vector<std::pair<Point2f, uint16_t>> DetectorMotionV2_1_artemis(string pathmodel
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -4023,31 +3955,8 @@ std::tuple<vector<Point2f>, vector<Point2f>, Mat> detectORB(Mat &im1, Mat &im2, 
 	return std::make_tuple(points1, points2, imMatches);
 }
 
-Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, /*vector<Scalar> class_name_color,*/ bool usedetector, float confidence)
+Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
-	Scalar class_name_color[20] = {
-			Scalar(255, 0, 0),
-			Scalar(0, 20, 200),
-			Scalar(0, 255, 0),
-			Scalar(255, 0, 255),
-			Scalar(0, 255, 255),
-			Scalar(255, 255, 0),
-			Scalar(255, 255, 255),
-			Scalar(200, 0, 200),
-			Scalar(100, 0, 255),
-			Scalar(255, 0, 100),
-			Scalar(30, 20, 200),
-			Scalar(25, 255, 0),
-			Scalar(255, 44, 255),
-			Scalar(88, 255, 255),
-			Scalar(255, 255, 39),
-			Scalar(255, 255, 255),
-			Scalar(200, 46, 200),
-			Scalar(100, 79, 255),
-			Scalar(200, 46, 150),
-			Scalar(140, 70, 205),
-	};
-
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
 	vector<Mat> imgs;
@@ -4767,7 +4676,7 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -4778,14 +4687,14 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
 
 		for (int j = 0; j < objects[i].ORB_ids.size(); j++)
-			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, class_name_color[objects.at(i).id], 1);
+			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, class_name_color(objects.at(i).id), 1);
 	}
 
 	//--------------</visualization>-------------------------
@@ -4807,7 +4716,7 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color[objects.at(i).id], // font color
+								class_name_color(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -4818,7 +4727,7 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -4842,31 +4751,8 @@ Mat DetectorMotionV2_2(string pathmodel, torch::DeviceType device_type, Mat fram
 	return baseimag;
 }
 
-Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, /*vector<Scalar> class_name_color,*/ bool usedetector, float confidence)
+Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence)
 {
-	Scalar class_name_color[20] = {
-			Scalar(255, 0, 0),
-			Scalar(0, 20, 200),
-			Scalar(0, 255, 0),
-			Scalar(255, 0, 255),
-			Scalar(0, 255, 255),
-			Scalar(255, 255, 0),
-			Scalar(255, 255, 255),
-			Scalar(200, 0, 200),
-			Scalar(100, 0, 255),
-			Scalar(255, 0, 100),
-			Scalar(30, 20, 200),
-			Scalar(25, 255, 0),
-			Scalar(255, 44, 255),
-			Scalar(88, 255, 255),
-			Scalar(255, 255, 39),
-			Scalar(255, 255, 255),
-			Scalar(200, 46, 200),
-			Scalar(100, 79, 255),
-			Scalar(200, 46, 150),
-			Scalar(140, 70, 205),
-	};
-
 	vector<vector<Point2f>> clusters;
 	vector<Point2f> motion;
 	vector<Mat> imgs;
@@ -5553,7 +5439,7 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -5564,14 +5450,14 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color[objects.at(i).id], 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
 
 		for (int j = 0; j < objects[i].ORB_ids.size(); j++)
-			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, class_name_color[objects.at(i).id], 1);
+			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, class_name_color(objects.at(i).id), 1);
 	}
 
 	//--------------</visualization>-------------------------
@@ -5593,7 +5479,7 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color[objects.at(i).id], // font color
+								class_name_color(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -5604,7 +5490,7 @@ Mat DetectorMotionV2_3(string pathmodel, torch::DeviceType device_type, Mat fram
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color[objects.at(i).id], 1);
+			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
