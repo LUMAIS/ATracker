@@ -36,14 +36,16 @@ const char *gengetopt_args_info_description = "Basic ant tracker, which uses YOL
 const char *gengetopt_args_info_help[] = {
   "  -h, --help                Print help and exit",
   "  -V, --version             Print version and exit",
-  "  -m, --model=filename      path to the object detector (PyTorch ML model)",
-  "  -c, --confidence=FLOAT    confidence threshold for the calling object\n                              detector model, typically 0.25 .. 0.5 for a\n                              YOLOv5-based model  (default=`0.32')",
-  "  -g, --cuda                computational device for the object detector (CUDA\n                              GPU or CPU}  (default=off)",
   "  -o, --output=filename     output directory  (default=`.')",
   "  -f, --fout_suffix=STRING  additional suffix for the resulting output files",
+  "\n Group: detection\n  Object detection parameters",
+  "  -m, --model=filename      path to the object detector (PyTorch ML model)",
+  "  -a, --ant-length=INT      expected ant length  (default=`80')",
+  "  -c, --confidence=FLOAT    confidence threshold for the calling object\n                              detector model, typically 0.25 .. 0.5 for a\n                              YOLOv5-based model  (default=`0.32')",
+  "  -g, --cuda                computational device for the object detector (CUDA\n                              GPU or CPU}  (default=off)",
   "\n Group: input\n  Input data",
-  "  -v, --video=filename      path to the input video",
   "  -i, --img=filename        path to the input image",
+  "  -v, --video=filename      path to the input video",
   "  -s, --frame_start=INT     start frame index  (default=`0')",
   "  -n, --frame_num=INT       the number of frames  (default=`-1')",
     0
@@ -76,15 +78,17 @@ void clear_given (struct gengetopt_args_info *args_info)
 {
   args_info->help_given = 0 ;
   args_info->version_given = 0 ;
-  args_info->model_given = 0 ;
-  args_info->confidence_given = 0 ;
-  args_info->cuda_given = 0 ;
   args_info->output_given = 0 ;
   args_info->fout_suffix_given = 0 ;
-  args_info->video_given = 0 ;
+  args_info->model_given = 0 ;
+  args_info->ant_length_given = 0 ;
+  args_info->confidence_given = 0 ;
+  args_info->cuda_given = 0 ;
   args_info->img_given = 0 ;
+  args_info->video_given = 0 ;
   args_info->frame_start_given = 0 ;
   args_info->frame_num_given = 0 ;
+  args_info->detection_group_counter = 0 ;
   args_info->input_group_counter = 0 ;
 }
 
@@ -92,19 +96,21 @@ static
 void clear_args (struct gengetopt_args_info *args_info)
 {
   FIX_UNUSED (args_info);
-  args_info->model_arg = NULL;
-  args_info->model_orig = NULL;
-  args_info->confidence_arg = 0.32;
-  args_info->confidence_orig = NULL;
-  args_info->cuda_flag = 0;
   args_info->output_arg = gengetopt_strdup (".");
   args_info->output_orig = NULL;
   args_info->fout_suffix_arg = NULL;
   args_info->fout_suffix_orig = NULL;
-  args_info->video_arg = NULL;
-  args_info->video_orig = NULL;
+  args_info->model_arg = NULL;
+  args_info->model_orig = NULL;
+  args_info->ant_length_arg = 80;
+  args_info->ant_length_orig = NULL;
+  args_info->confidence_arg = 0.32;
+  args_info->confidence_orig = NULL;
+  args_info->cuda_flag = 0;
   args_info->img_arg = NULL;
   args_info->img_orig = NULL;
+  args_info->video_arg = NULL;
+  args_info->video_orig = NULL;
   args_info->frame_start_arg = 0;
   args_info->frame_start_orig = NULL;
   args_info->frame_num_arg = -1;
@@ -119,15 +125,16 @@ void init_args_info(struct gengetopt_args_info *args_info)
 
   args_info->help_help = gengetopt_args_info_help[0] ;
   args_info->version_help = gengetopt_args_info_help[1] ;
-  args_info->model_help = gengetopt_args_info_help[2] ;
-  args_info->confidence_help = gengetopt_args_info_help[3] ;
-  args_info->cuda_help = gengetopt_args_info_help[4] ;
-  args_info->output_help = gengetopt_args_info_help[5] ;
-  args_info->fout_suffix_help = gengetopt_args_info_help[6] ;
-  args_info->video_help = gengetopt_args_info_help[8] ;
-  args_info->img_help = gengetopt_args_info_help[9] ;
-  args_info->frame_start_help = gengetopt_args_info_help[10] ;
-  args_info->frame_num_help = gengetopt_args_info_help[11] ;
+  args_info->output_help = gengetopt_args_info_help[2] ;
+  args_info->fout_suffix_help = gengetopt_args_info_help[3] ;
+  args_info->model_help = gengetopt_args_info_help[5] ;
+  args_info->ant_length_help = gengetopt_args_info_help[6] ;
+  args_info->confidence_help = gengetopt_args_info_help[7] ;
+  args_info->cuda_help = gengetopt_args_info_help[8] ;
+  args_info->img_help = gengetopt_args_info_help[10] ;
+  args_info->video_help = gengetopt_args_info_help[11] ;
+  args_info->frame_start_help = gengetopt_args_info_help[12] ;
+  args_info->frame_num_help = gengetopt_args_info_help[13] ;
   
 }
 
@@ -217,17 +224,18 @@ static void
 cmdline_parser_release (struct gengetopt_args_info *args_info)
 {
 
-  free_string_field (&(args_info->model_arg));
-  free_string_field (&(args_info->model_orig));
-  free_string_field (&(args_info->confidence_orig));
   free_string_field (&(args_info->output_arg));
   free_string_field (&(args_info->output_orig));
   free_string_field (&(args_info->fout_suffix_arg));
   free_string_field (&(args_info->fout_suffix_orig));
-  free_string_field (&(args_info->video_arg));
-  free_string_field (&(args_info->video_orig));
+  free_string_field (&(args_info->model_arg));
+  free_string_field (&(args_info->model_orig));
+  free_string_field (&(args_info->ant_length_orig));
+  free_string_field (&(args_info->confidence_orig));
   free_string_field (&(args_info->img_arg));
   free_string_field (&(args_info->img_orig));
+  free_string_field (&(args_info->video_arg));
+  free_string_field (&(args_info->video_orig));
   free_string_field (&(args_info->frame_start_orig));
   free_string_field (&(args_info->frame_num_orig));
   
@@ -264,20 +272,22 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "help", 0, 0 );
   if (args_info->version_given)
     write_into_file(outfile, "version", 0, 0 );
-  if (args_info->model_given)
-    write_into_file(outfile, "model", args_info->model_orig, 0);
-  if (args_info->confidence_given)
-    write_into_file(outfile, "confidence", args_info->confidence_orig, 0);
-  if (args_info->cuda_given)
-    write_into_file(outfile, "cuda", 0, 0 );
   if (args_info->output_given)
     write_into_file(outfile, "output", args_info->output_orig, 0);
   if (args_info->fout_suffix_given)
     write_into_file(outfile, "fout_suffix", args_info->fout_suffix_orig, 0);
-  if (args_info->video_given)
-    write_into_file(outfile, "video", args_info->video_orig, 0);
+  if (args_info->model_given)
+    write_into_file(outfile, "model", args_info->model_orig, 0);
+  if (args_info->ant_length_given)
+    write_into_file(outfile, "ant-length", args_info->ant_length_orig, 0);
+  if (args_info->confidence_given)
+    write_into_file(outfile, "confidence", args_info->confidence_orig, 0);
+  if (args_info->cuda_given)
+    write_into_file(outfile, "cuda", 0, 0 );
   if (args_info->img_given)
     write_into_file(outfile, "img", args_info->img_orig, 0);
+  if (args_info->video_given)
+    write_into_file(outfile, "video", args_info->video_orig, 0);
   if (args_info->frame_start_given)
     write_into_file(outfile, "frame_start", args_info->frame_start_orig, 0);
   if (args_info->frame_num_given)
@@ -330,17 +340,32 @@ gengetopt_strdup (const char *s)
 }
 
 static void
+reset_group_detection(struct gengetopt_args_info *args_info)
+{
+  if (! args_info->detection_group_counter)
+    return;
+  
+  args_info->model_given = 0 ;
+  free_string_field (&(args_info->model_arg));
+  free_string_field (&(args_info->model_orig));
+  args_info->ant_length_given = 0 ;
+  free_string_field (&(args_info->ant_length_orig));
+
+  args_info->detection_group_counter = 0;
+}
+
+static void
 reset_group_input(struct gengetopt_args_info *args_info)
 {
   if (! args_info->input_group_counter)
     return;
   
-  args_info->video_given = 0 ;
-  free_string_field (&(args_info->video_arg));
-  free_string_field (&(args_info->video_orig));
   args_info->img_given = 0 ;
   free_string_field (&(args_info->img_arg));
   free_string_field (&(args_info->img_orig));
+  args_info->video_given = 0 ;
+  free_string_field (&(args_info->video_arg));
+  free_string_field (&(args_info->video_orig));
 
   args_info->input_group_counter = 0;
 }
@@ -414,7 +439,13 @@ cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *pro
   FIX_UNUSED (additional_error);
 
   /* checks for required options */
-  if (args_info->input_group_counter == 0)
+  if (args_info->detection_group_counter == 0)
+    {
+      fprintf (stderr, "%s: %d options of group detection were given. One is required%s.\n", prog_name, args_info->detection_group_counter, (additional_error ? additional_error : ""));
+      error_occurred = 1;
+    }
+  
+if (args_info->input_group_counter == 0)
     {
       fprintf (stderr, "%s: %d options of group input were given. One is required%s.\n", prog_name, args_info->input_group_counter, (additional_error ? additional_error : ""));
       error_occurred = 1;
@@ -602,19 +633,20 @@ cmdline_parser_internal (
       static struct option long_options[] = {
         { "help",	0, NULL, 'h' },
         { "version",	0, NULL, 'V' },
-        { "model",	1, NULL, 'm' },
-        { "confidence",	1, NULL, 'c' },
-        { "cuda",	0, NULL, 'g' },
         { "output",	1, NULL, 'o' },
         { "fout_suffix",	1, NULL, 'f' },
-        { "video",	1, NULL, 'v' },
+        { "model",	1, NULL, 'm' },
+        { "ant-length",	1, NULL, 'a' },
+        { "confidence",	1, NULL, 'c' },
+        { "cuda",	0, NULL, 'g' },
         { "img",	1, NULL, 'i' },
+        { "video",	1, NULL, 'v' },
         { "frame_start",	1, NULL, 's' },
         { "frame_num",	1, NULL, 'n' },
         { 0,  0, 0, 0 }
       };
 
-      c = getopt_long (argc, argv, "hVm:c:go:f:v:i:s:n:", long_options, &option_index);
+      c = getopt_long (argc, argv, "hVo:f:m:a:c:gi:v:s:n:", long_options, &option_index);
 
       if (c == -1) break;	/* Exit from `while (1)' loop.  */
 
@@ -630,14 +662,56 @@ cmdline_parser_internal (
           cmdline_parser_free (&local_args_info);
           exit (EXIT_SUCCESS);
 
+        case 'o':	/* output directory.  */
+        
+        
+          if (update_arg( (void *)&(args_info->output_arg), 
+               &(args_info->output_orig), &(args_info->output_given),
+              &(local_args_info.output_given), optarg, 0, ".", ARG_STRING,
+              check_ambiguity, override, 0, 0,
+              "output", 'o',
+              additional_error))
+            goto failure;
+        
+          break;
+        case 'f':	/* additional suffix for the resulting output files.  */
+        
+        
+          if (update_arg( (void *)&(args_info->fout_suffix_arg), 
+               &(args_info->fout_suffix_orig), &(args_info->fout_suffix_given),
+              &(local_args_info.fout_suffix_given), optarg, 0, 0, ARG_STRING,
+              check_ambiguity, override, 0, 0,
+              "fout_suffix", 'f',
+              additional_error))
+            goto failure;
+        
+          break;
         case 'm':	/* path to the object detector (PyTorch ML model).  */
         
+          if (args_info->detection_group_counter && override)
+            reset_group_detection (args_info);
+          args_info->detection_group_counter += 1;
         
           if (update_arg( (void *)&(args_info->model_arg), 
                &(args_info->model_orig), &(args_info->model_given),
               &(local_args_info.model_given), optarg, 0, 0, ARG_STRING,
               check_ambiguity, override, 0, 0,
               "model", 'm',
+              additional_error))
+            goto failure;
+        
+          break;
+        case 'a':	/* expected ant length.  */
+        
+          if (args_info->detection_group_counter && override)
+            reset_group_detection (args_info);
+          args_info->detection_group_counter += 1;
+        
+          if (update_arg( (void *)&(args_info->ant_length_arg), 
+               &(args_info->ant_length_orig), &(args_info->ant_length_given),
+              &(local_args_info.ant_length_given), optarg, 0, "80", ARG_INT,
+              check_ambiguity, override, 0, 0,
+              "ant-length", 'a',
               additional_error))
             goto failure;
         
@@ -664,26 +738,17 @@ cmdline_parser_internal (
             goto failure;
         
           break;
-        case 'o':	/* output directory.  */
+        case 'i':	/* path to the input image.  */
         
+          if (args_info->input_group_counter && override)
+            reset_group_input (args_info);
+          args_info->input_group_counter += 1;
         
-          if (update_arg( (void *)&(args_info->output_arg), 
-               &(args_info->output_orig), &(args_info->output_given),
-              &(local_args_info.output_given), optarg, 0, ".", ARG_STRING,
+          if (update_arg( (void *)&(args_info->img_arg), 
+               &(args_info->img_orig), &(args_info->img_given),
+              &(local_args_info.img_given), optarg, 0, 0, ARG_STRING,
               check_ambiguity, override, 0, 0,
-              "output", 'o',
-              additional_error))
-            goto failure;
-        
-          break;
-        case 'f':	/* additional suffix for the resulting output files.  */
-        
-        
-          if (update_arg( (void *)&(args_info->fout_suffix_arg), 
-               &(args_info->fout_suffix_orig), &(args_info->fout_suffix_given),
-              &(local_args_info.fout_suffix_given), optarg, 0, 0, ARG_STRING,
-              check_ambiguity, override, 0, 0,
-              "fout_suffix", 'f',
+              "img", 'i',
               additional_error))
             goto failure;
         
@@ -699,21 +764,6 @@ cmdline_parser_internal (
               &(local_args_info.video_given), optarg, 0, 0, ARG_STRING,
               check_ambiguity, override, 0, 0,
               "video", 'v',
-              additional_error))
-            goto failure;
-        
-          break;
-        case 'i':	/* path to the input image.  */
-        
-          if (args_info->input_group_counter && override)
-            reset_group_input (args_info);
-          args_info->input_group_counter += 1;
-        
-          if (update_arg( (void *)&(args_info->img_arg), 
-               &(args_info->img_orig), &(args_info->img_given),
-              &(local_args_info.img_given), optarg, 0, 0, ARG_STRING,
-              check_ambiguity, override, 0, 0,
-              "img", 'i',
               additional_error))
             goto failure;
         
@@ -754,6 +804,12 @@ cmdline_parser_internal (
         } /* switch */
     } /* while */
 
+  if (args_info->detection_group_counter > 1)
+    {
+      fprintf (stderr, "%s: %d options of group detection were given. One is required%s.\n", argv[0], args_info->detection_group_counter, (additional_error ? additional_error : ""));
+      error_occurred = 1;
+    }
+  
   if (args_info->input_group_counter > 1)
     {
       fprintf (stderr, "%s: %d options of group input were given. One is required%s.\n", argv[0], args_info->input_group_counter, (additional_error ? additional_error : ""));

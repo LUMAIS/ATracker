@@ -18,15 +18,14 @@ using cv::Scalar;
 namespace fs = std::filesystem;
 
 
-int resolution = 992;  // 1200;  // frame size for model 992
-const float kres = resolution / 1200.f;
+int resolution = 992;  // Frame size for a model
+const float kres = resolution / 1200.f;  // Note: basic motion parameters were adjusted for 1200 px
 
 uint16_t extr = 204;  // sidebar size
-uint16_t const half_imgsize = roundf(80 * kres); // area half size for a moving object
+uint16_t objhsz = 80; // area half size for a moving object: max(w, h) [/2];  8 .. 128
 const uint16_t model_resolution = resolution;  // frame resizing for model (992)
-uint16_t frame_resolution = resolution;//frame frame_resolution
-float reduseres = roundf(400 * kres);   // (good value 248)
-uint16_t color_threshold = 80; // 65-70
+uint16_t frame_resolution = resolution;  //frame frame_resolution
+float reduseres = roundf(224 * 80.f / objhsz / 32.f) * 32;  // 400;   // Frame resolution for motion detection using non-adaptive thresholding:  (good value 248), 400
 
 string class_name[] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};  // class_name[9]
 // string class_name[] = {"a", "ah", "ta", "l", "tl", "fn", "p", "b", "u"};  // class_name[9]
@@ -40,7 +39,7 @@ string class_name[] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};  // cla
 // //                         "pupa": 6,
 // //                         "barcode": 7} #,"uncategorized": 8}
 
-Scalar class_name_color(uint32_t id, uint8_t clrLow=32, uint8_t clrHigh=223) noexcept
+Scalar objColor(uint32_t id, uint8_t clrLow=32, uint8_t clrHigh=223) noexcept
 {
 	// Scalar class_name_color[9] = {Scalar(255, 0, 0), Scalar(0, 0, 255), Scalar(0, 255, 0), Scalar(255, 0, 255), Scalar(0, 255, 255), Scalar(255, 255, 0), Scalar(255, 255, 255), Scalar(200, 0, 200), Scalar(100, 0, 255)};
 	static Scalar  baseclrs[20] = {
@@ -407,14 +406,14 @@ vector<OBJdetect> detectorV4_old(string pathmodel, Mat frame, torch::DeviceType 
 			ptext.x = detectsCent.at(i).x - 5;
 			ptext.y = detectsCent.at(i).y + 5;
 
-			rectangle(imageBGR, pt1, pt2, class_name_color(Objtype.at(i)), 1);
+			rectangle(imageBGR, pt1, pt2, objColor(Objtype.at(i)), 1);
 
 			cv::putText(imageBGR,                  // target image
 									class_name[Objtype.at(i)], // text
 									ptext,                     // top-left position
 									1,
 									0.8,
-									class_name_color(Objtype.at(i)), // font color
+									objColor(Objtype.at(i)), // font color
 									1);
 		}
 	}
@@ -428,8 +427,9 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 	vector<OBJdetect> obj_detects;
 	auto millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	static torch::jit::script::Module module = torch::jit::load(pathmodel);
-	std::cout << "Model loading time: +" << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
-		<< "ms; " << "confidence threshold : " << confidence << endl;
+	std::cout << "Model loading time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
+		// << "ms; " << "confidence threshold : " << confidence
+		<< " ms" << endl;
 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
 	uint16_t pointsdelta = 5;
@@ -468,7 +468,7 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	auto outputs = module.forward(input).toTuple();
 	// cout << "module.forward(input).toTuple() - OK" << endl;
-	std::cout << "Raw object detection +" << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec << "ms" << endl;
+	std::cout << "Raw object detection time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec << " ms" << endl;
 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	torch::Tensor detections = outputs->elements()[0].toTensor();
 
@@ -571,14 +571,14 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 			ptext.x = detectsCent.at(i).x - 5;
 			ptext.y = detectsCent.at(i).y + 5;
 
-			rectangle(imageBGR, pt1, pt2, class_name_color(Objtype.at(i)), 1);
+			rectangle(imageBGR, pt1, pt2, objColor(Objtype.at(i)), 1);
 
 			cv::putText(imageBGR,                  // target image
 									class_name[Objtype.at(i)], // text
 									ptext,                     // top-left position
 									1,
 									0.8,
-									class_name_color(Objtype.at(i)), // font color
+									objColor(Objtype.at(i)), // font color
 									1);
 		}
 	}
@@ -633,7 +633,7 @@ size_t samples_compV2(Mat sample1, Mat sample2)
 Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 {
 	int wh = 800;
-	float hp = 1.0 * (resolution / reduseres) * wh / (2 * half_imgsize);
+	float hp = 1.0 * (resolution / reduseres) * wh / (2 * objhsz);
 
 	Mat imag(wh, wh, CV_8UC3, Scalar(0, 0, 0));
 	Mat imag2(wh, wh, CV_8UC3, Scalar(0, 0, 0));
@@ -708,15 +708,15 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 			}
 			//--test color---/
 
-			bufp.x = 1.0 * obj.coords.at(i).x * wh / (2 * half_imgsize);
-			bufp.y = 1.0 * obj.coords.at(i).y * wh / (2 * half_imgsize);
+			bufp.x = 1.0 * obj.coords.at(i).x * wh / (2 * objhsz);
+			bufp.y = 1.0 * obj.coords.at(i).y * wh / (2 * objhsz);
 			imgsm.copyTo(imag(cv::Rect(bufp.x, bufp.y, imgsm.cols, imgsm.rows)));
 		}
 
 		for (int i = 0; i < obj.cluster_points.size(); i++)
 		{
-			bufp.x = ((obj.cluster_points.at(i).x - obj.cluster_center.x) * wh / (2 * half_imgsize) + wh / 2);
-			bufp.y = ((obj.cluster_points.at(i).y - obj.cluster_center.y) * wh / (2 * half_imgsize) + wh / 2);
+			bufp.x = ((obj.cluster_points.at(i).x - obj.cluster_center.x) * wh / (2 * objhsz) + wh / 2);
+			bufp.y = ((obj.cluster_points.at(i).y - obj.cluster_center.y) * wh / (2 * objhsz) + wh / 2);
 
 			pt1.x = bufp.x;
 			pt1.y = bufp.y;
@@ -786,15 +786,15 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 		}
 		//--test color---*/
 
-		bufp.x = 1.0 * obj2.coords.at(i).x * wh / (2 * half_imgsize);
-		bufp.y = 1.0 * obj2.coords.at(i).y * wh / (2 * half_imgsize);
+		bufp.x = 1.0 * obj2.coords.at(i).x * wh / (2 * objhsz);
+		bufp.y = 1.0 * obj2.coords.at(i).y * wh / (2 * objhsz);
 		imgsm.copyTo(imag2(cv::Rect(bufp.x, bufp.y, imgsm.cols, imgsm.rows)));
 	}
 
 	for (int i = 0; i < obj2.cluster_points.size(); i++)
 	{
-		bufp.x = ((obj2.cluster_points.at(i).x - obj2.cluster_center.x) * wh / (2 * half_imgsize) + wh / 2);
-		bufp.y = ((obj2.cluster_points.at(i).y - obj2.cluster_center.y) * wh / (2 * half_imgsize) + wh / 2);
+		bufp.x = ((obj2.cluster_points.at(i).x - obj2.cluster_center.x) * wh / (2 * objhsz) + wh / 2);
+		bufp.y = ((obj2.cluster_points.at(i).y - obj2.cluster_center.y) * wh / (2 * objhsz) + wh / 2);
 
 		pt1.x = bufp.x;
 		pt1.y = bufp.y;
@@ -822,8 +822,8 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 			size_t G = rand() % 255;
 			size_t B = rand() % 255;
 
-			bufp.x = 1.0 * obj2.coords.at(s2).x * wh / (2 * half_imgsize);
-			bufp.y = 1.0 * obj2.coords.at(s2).y * wh / (2 * half_imgsize);
+			bufp.x = 1.0 * obj2.coords.at(s2).x * wh / (2 * objhsz);
+			bufp.y = 1.0 * obj2.coords.at(s2).y * wh / (2 * objhsz);
 			// imgsm.copyTo(imag2(cv::Rect(bufp.x, bufp.y, imgsm.cols, imgsm.rows)));
 
 			pt1.x = bufp.x;
@@ -872,21 +872,21 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 		Mat imgsm = obj2.samples.at(ns2);
 		cv::resize(imgsm, imgsm, cv::Size(hp, hp), cv::InterpolationFlags::INTER_CUBIC);
 
-		bufp.x = 1.0 * obj.coords.at(ns1).x * wh / (2 * half_imgsize);
-		bufp.y = 1.0 * obj.coords.at(ns1).y * wh / (2 * half_imgsize);
+		bufp.x = 1.0 * obj.coords.at(ns1).x * wh / (2 * objhsz);
+		bufp.y = 1.0 * obj.coords.at(ns1).y * wh / (2 * objhsz);
 
 		Point2f c_cir;
 
-		c_cir.x = (half_imgsize - (obj2.coords.at(ns2).x - obj.coords.at(ns1).x)) * wh / (2 * half_imgsize);
-		c_cir.y = (half_imgsize - (obj2.coords.at(ns2).y - obj.coords.at(ns1).y)) * wh / (2 * half_imgsize);
+		c_cir.x = (objhsz - (obj2.coords.at(ns2).x - obj.coords.at(ns1).x)) * wh / (2 * objhsz);
+		c_cir.y = (objhsz - (obj2.coords.at(ns2).y - obj.coords.at(ns1).y)) * wh / (2 * objhsz);
 
 		std::cout << "c_cir.y - " << c_cir.y << endl;
 		std::cout << "c_cir.x - " << c_cir.x << endl;
-		std::cout << "half_imgsize - " << half_imgsize << endl;
+		std::cout << "objhsz - " << objhsz << endl;
 		// Scalar  objClr = Scalar(rand() % 255, rand() % 255, rand() % 255);
-		Scalar  objClr = class_name_color(obj.id);
+		Scalar  objClr = objColor(obj.id);
 
-		if (c_cir.y < 0 || c_cir.x < 0 || c_cir.y > 2 * half_imgsize * wh / (2 * half_imgsize) || c_cir.x > 2 * half_imgsize * wh / (2 * half_imgsize))
+		if (c_cir.y < 0 || c_cir.x < 0 || c_cir.y > 2 * objhsz * wh / (2 * objhsz) || c_cir.x > 2 * objhsz * wh / (2 * objhsz))
 			goto dell;
 
 		cv::circle(imag, c_cir, 3, objClr, 1);
@@ -903,8 +903,8 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 
 		//---
 
-		bufp.x = 1.0 * obj2.coords.at(ns2).x * wh / (2 * half_imgsize);
-		bufp.y = 1.0 * obj2.coords.at(ns2).y * wh / (2 * half_imgsize);
+		bufp.x = 1.0 * obj2.coords.at(ns2).x * wh / (2 * objhsz);
+		bufp.y = 1.0 * obj2.coords.at(ns2).y * wh / (2 * objhsz);
 		// imgsm.copyTo(imag2(cv::Rect(bufp.x, bufp.y, imgsm.cols, imgsm.rows)));
 
 		pt1.x = bufp.x;
@@ -941,7 +941,7 @@ Mat draw_object(ALObject obj, ALObject obj2, Scalar color)
 Mat draw_compare(ALObject obj, ALObject obj2, Scalar color)
 {
 	int wh = 800;
-	float hp = 1.0 * (resolution / reduseres) * wh / (2 * half_imgsize);
+	float hp = 1.0 * (resolution / reduseres) * wh / (2 * objhsz);
 
 	Mat imag(wh, wh, CV_8UC3, Scalar(0, 0, 0));
 	Mat imag2(wh, wh, CV_8UC3, Scalar(0, 0, 0));
@@ -989,8 +989,8 @@ Mat draw_compare(ALObject obj, ALObject obj2, Scalar color)
 				sample2 = obj2.samples.at(i);
 				// cv::resize(sample2, sample2, cv::Size(hp, hp), cv::InterpolationFlags::INTER_CUBIC);
 
-				bufp.x = 1.0 * obj2.coords.at(i).x * wh / (2 * half_imgsize);
-				bufp.y = 1.0 * obj2.coords.at(i).y * wh / (2 * half_imgsize);
+				bufp.x = 1.0 * obj2.coords.at(i).x * wh / (2 * objhsz);
+				bufp.y = 1.0 * obj2.coords.at(i).y * wh / (2 * objhsz);
 
 				if ((bufp.y + step_y * st + hp) > imag.rows || (bufp.x + step_x * st + hp) > imag.cols || (bufp.y + step_y * st) < 0 || (bufp.x + step_x * st) < 0)
 					continue;
@@ -1020,10 +1020,10 @@ Mat draw_compare(ALObject obj, ALObject obj2, Scalar color)
 				*/
 			}
 
-			bufp.y = half_imgsize + step_y * st * obj2.img.rows / imag.rows;
-			bufp.x = half_imgsize + step_x * st * obj2.img.cols / imag.cols;
+			bufp.y = objhsz + step_y * st * obj2.img.rows / imag.rows;
+			bufp.x = objhsz + step_x * st * obj2.img.cols / imag.cols;
 
-			if (bufp.y > 0 && bufp.y < 2 * half_imgsize && bufp.x > 0 && bufp.x < 2 * half_imgsize)
+			if (bufp.y > 0 && bufp.y < 2 * objhsz && bufp.x > 0 && bufp.x < 2 * objhsz)
 			{
 				npsamples.push_back(np);
 				center.push_back(bufp);
@@ -1052,7 +1052,7 @@ Mat draw_compare(ALObject obj, ALObject obj2, Scalar color)
 
 	int color_step = (max - min) / 255;
 
-	Mat imgcenter(2 * half_imgsize, 2 * half_imgsize, CV_8UC1, Scalar(0, 0, 0));
+	Mat imgcenter(2 * objhsz, 2 * objhsz, CV_8UC1, Scalar(0, 0, 0));
 
 	for (int i = 0; i < npsamples.size(); i++)
 	{
@@ -1108,22 +1108,28 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 			objects[i].model_center.y = -1;
 		}
 
+		// Remove non-ant objects
 		for (int i = 0; i < detects.size(); i++)
 		{
 			if (detects.at(i).type != "a")
-			{
-				detects.erase(detects.begin() + i);
-				i--;
+				detects.erase(detects.begin() + i--);
+			else if(id_frame >= 1) {
+				// Update motion-related parameters
+
+			} else {
+				// Init motion-related parameters
 			}
 		}
+		//if(id_frame == 0)
+		// reduseres = roundf(224 * 80.f / objhsz / 32.f) * 32
 
 		for (int i = 0; i < detects.size(); i++)
 		{
 			vector<Point2f> cluster_points;
 			cluster_points.push_back(detects.at(i).detect);
 			imagbuf = frame_resizing(framebuf);
-			img = imagbuf(cv::Range(max_u16(detects.at(i).detect.y - half_imgsize), min_u16(imagbuf.rows, detects.at(i).detect.y + half_imgsize))
-				, cv::Range(max_u16(detects.at(i).detect.x - half_imgsize), min_u16(imagbuf.cols, detects.at(i).detect.x + half_imgsize)));
+			img = imagbuf(cv::Range(max_u16(detects.at(i).detect.y - objhsz), min_u16(imagbuf.rows, detects.at(i).detect.y + objhsz))
+				, cv::Range(max_u16(detects.at(i).detect.x - objhsz), min_u16(imagbuf.cols, detects.at(i).detect.x + objhsz)));
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
 
@@ -1341,20 +1347,20 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 		imagbuf = frame_resizing(framebuf);
 		imagbuf.convertTo(imagbuf, CV_8UC3);
 
-		if (clustercenter.y - half_imgsize < 0)
-			clustercenter.y = half_imgsize + 1;
+		if (clustercenter.y - objhsz < 0)
+			clustercenter.y = objhsz + 1;
 
-		if (clustercenter.x - half_imgsize < 0)
-			clustercenter.x = half_imgsize + 1;
+		if (clustercenter.x - objhsz < 0)
+			clustercenter.x = objhsz + 1;
 
-		if (clustercenter.y + half_imgsize > imagbuf.rows)
+		if (clustercenter.y + objhsz > imagbuf.rows)
 			clustercenter.y = imagbuf.rows - 1;
 
-		if (clustercenter.x + half_imgsize > imagbuf.cols)
+		if (clustercenter.x + objhsz > imagbuf.cols)
 			clustercenter.x = imagbuf.cols - 1;
 
-		img = imagbuf(cv::Range(max_u16(clustercenter.y - half_imgsize), min_u16(imagbuf.rows, clustercenter.y + half_imgsize))
-			, cv::Range(max_u16(clustercenter.x - half_imgsize), min_u16(imagbuf.cols, clustercenter.x + half_imgsize)));
+		img = imagbuf(cv::Range(max_u16(clustercenter.y - objhsz), min_u16(imagbuf.rows, clustercenter.y + objhsz))
+			, cv::Range(max_u16(clustercenter.x - objhsz), min_u16(imagbuf.cols, clustercenter.x + objhsz)));
 		cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 		img.convertTo(img, CV_8UC3);
 		objects[j].img = img;
@@ -1440,8 +1446,8 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 			Point2f clustercenter = cluster_center(clusters[cls]);
 			imagbuf = frame_resizing(framebuf);
 			imagbuf.convertTo(imagbuf, CV_8UC3);
-			img = imagbuf(cv::Range(max_u16(clustercenter.y - half_imgsize), min_u16(imagbuf.rows, clustercenter.y + half_imgsize))
-				, cv::Range(max_u16(clustercenter.x - half_imgsize), min_u16(imagbuf.cols, clustercenter.x + half_imgsize)));
+			img = imagbuf(cv::Range(max_u16(clustercenter.y - objhsz), min_u16(imagbuf.rows, clustercenter.y + objhsz))
+				, cv::Range(max_u16(clustercenter.x - objhsz), min_u16(imagbuf.cols, clustercenter.x + objhsz)));
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
 
@@ -1483,7 +1489,7 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).model_center.x > -1) // visualization of the classifier
@@ -1494,11 +1500,11 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, objColor(objects.at(i).id), 2);
 	}
 	//--------------</visualization>-------------------------
 
@@ -1518,7 +1524,7 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color(objects.at(i).id), // font color
+								objColor(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -1529,7 +1535,7 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(baseimag, pt1, pt2, objColor(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -1550,7 +1556,7 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 		al_objs.push_back(objects.at(1));
 		if (al_objs.size() > 1)
 		{
-			draw_compare(al_objs.at(al_objs.size() - 2), al_objs.at(al_objs.size() - 1), class_name_color(al_objs.at(0).id));
+			draw_compare(al_objs.at(al_objs.size() - 2), al_objs.at(al_objs.size() - 1), objColor(al_objs.at(0).id));
 		}
 	*/
 
@@ -1745,20 +1751,20 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 		imagbuf = frame_resizing(framebuf);
 		imagbuf.convertTo(imagbuf, CV_8UC3);
 
-		if (clustercenter.y - half_imgsize * koef < 0)
-			clustercenter.y = half_imgsize * koef + 1;
+		if (clustercenter.y - objhsz * koef < 0)
+			clustercenter.y = objhsz * koef + 1;
 
-		if (clustercenter.x - half_imgsize * koef < 0)
-			clustercenter.x = half_imgsize * koef + 1;
+		if (clustercenter.x - objhsz * koef < 0)
+			clustercenter.x = objhsz * koef + 1;
 
-		if (clustercenter.y + half_imgsize * koef > imagbuf.rows)
+		if (clustercenter.y + objhsz * koef > imagbuf.rows)
 			clustercenter.y = imagbuf.rows - 1;
 
-		if (clustercenter.x + half_imgsize * koef > imagbuf.cols)
+		if (clustercenter.x + objhsz * koef > imagbuf.cols)
 			clustercenter.x = imagbuf.cols - 1;
 
-		img = imagbuf(cv::Range(max_u16(clustercenter.y - half_imgsize * koef), min_u16(imagbuf.rows, clustercenter.y + half_imgsize * koef))
-			, cv::Range(max_u16(clustercenter.x - half_imgsize * koef), min_u16(imagbuf.cols, clustercenter.x + half_imgsize * koef)));
+		img = imagbuf(cv::Range(max_u16(clustercenter.y - objhsz * koef), min_u16(imagbuf.rows, clustercenter.y + objhsz * koef))
+			, cv::Range(max_u16(clustercenter.x - objhsz * koef), min_u16(imagbuf.cols, clustercenter.x + objhsz * koef)));
 		cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 		img.convertTo(img, CV_8UC3);
 		objects[j].img = img;
@@ -1844,8 +1850,8 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 			Point2f clustercenter = cluster_center(clusters[cls]);
 			imagbuf = frame_resizing(framebuf);
 			imagbuf.convertTo(imagbuf, CV_8UC3);
-			img = imagbuf(cv::Range(max_u16(clustercenter.y - half_imgsize * koef), min_u16(imagbuf.rows, clustercenter.y + half_imgsize * koef))
-				, cv::Range(max_u16(clustercenter.x - half_imgsize * koef), min_u16(imagbuf.cols, clustercenter.x + half_imgsize * koef)));
+			img = imagbuf(cv::Range(max_u16(clustercenter.y - objhsz * koef), min_u16(imagbuf.rows, clustercenter.y + objhsz * koef))
+				, cv::Range(max_u16(clustercenter.x - objhsz * koef), min_u16(imagbuf.cols, clustercenter.x + objhsz * koef)));
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
 
@@ -1887,7 +1893,7 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).model_center.x > -1) // visualization of the classifier
@@ -1898,11 +1904,11 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, objColor(objects.at(i).id), 2);
 	}
 	//--------------</visualization>-------------------------
 
@@ -1922,7 +1928,7 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color(objects.at(i).id), // font color
+								objColor(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -1933,7 +1939,7 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(baseimag, pt1, pt2, objColor(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -2118,7 +2124,7 @@ vector<Point2f> draw_map_prob(vector<int> npsamples, vector<Point2f> mpoints)
 
 	int color_step = (int)((max - min) / (3 * 255));
 
-	Mat imgpmap(2 * half_imgsize, 2 * half_imgsize, CV_8UC3, Scalar(0, 0, 0));
+	Mat imgpmap(2 * objhsz, 2 * objhsz, CV_8UC3, Scalar(0, 0, 0));
 
 	uint8_t *pixelPtr1 = (uint8_t *)imgpmap.data;
 	int cn = imgpmap.channels();
@@ -2219,25 +2225,26 @@ vector<Point2f> map_prob(vector<int> npsamples, vector<Point2f> mpoints)
 
 Mat color_correction(Mat imag)
 {
-	Mat imagchange;
+	Mat imagchange(imag.rows, imag.cols, imag.type());
+	cv::adaptiveThreshold(imag, imagchange, 0xFF, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, roundf(objhsz / 12.f) * 2 + 1, -1);  // 15, -2; 7, 1; 11, 2
 
-	imag.copyTo(imagchange);
+	// // constexpr uint16_t color_threshold = 80; // 65-70, 80
+	// // imag.copyTo(imagchange);
+	// // for (int y = 0; y < imag.rows; y++)
+	// // {
+	// // 	for (int x = 0; x < imag.cols; x++)
+	// // 	{
+	// // 		uchar color1 = imag.at<uchar>(Point(x, y));
 
-	for (int y = 0; y < imag.rows; y++)
-	{
-		for (int x = 0; x < imag.cols; x++)
-		{
-			uchar color1 = imag.at<uchar>(Point(x, y));
-
-			if (color1 < (uchar)color_threshold) // 65-70
-				imagchange.at<uchar>(Point(x, y)) = 0;
-			else
-				imagchange.at<uchar>(Point(x, y)) = 255;
-		}
-	}
+	// // 		if (color1 < (uchar)color_threshold) // 65-70
+	// // 			imagchange.at<uchar>(Point(x, y)) = 0;
+	// // 		else
+	// // 			imagchange.at<uchar>(Point(x, y)) = 255;
+	// // 	}
+	// // }
 
 	// imshow("imagchange", imagchange);
-	// cv::waitKey(0);
+	// cv::waitKey(500);
 
 	return imagchange;
 }
@@ -2308,7 +2315,7 @@ void objdeterm(vector<Point2f> &cluster_points, Mat frame, ALObject &obj, size_t
 			bool cont = true;
 			for (int i = 0; i < obj.cluster_points.size(); i++)
 			{
-				if (abs(step_y - (obj.cluster_points.at(i).y - obj.cluster_center.y + half_imgsize)) < maxr && abs(step_x - (obj.cluster_points.at(i).x - obj.cluster_center.x + half_imgsize)) < maxr)
+				if (abs(step_y - (obj.cluster_points.at(i).y - obj.cluster_center.y + objhsz)) < maxr && abs(step_x - (obj.cluster_points.at(i).x - obj.cluster_center.x + objhsz)) < maxr)
 					cont = false;
 			}
 
@@ -2478,8 +2485,8 @@ void objdeterm(vector<Point2f> &cluster_points, Mat frame, ALObject &obj, size_t
 
 	obj.center_determine(id_frame, false);
 	frame.convertTo(bufimg, CV_8UC3);
-	obj.img = bufimg(cv::Range(max_u16(obj.cluster_center.y - half_imgsize), min_u16(bufimg.rows, obj.cluster_center.y + half_imgsize))
-		, cv::Range(max_u16(obj.cluster_center.x - half_imgsize), min_u16(bufimg.cols, obj.cluster_center.x + half_imgsize)));
+	obj.img = bufimg(cv::Range(max_u16(obj.cluster_center.y - objhsz), min_u16(bufimg.rows, obj.cluster_center.y + objhsz))
+		, cv::Range(max_u16(obj.cluster_center.x - objhsz), min_u16(bufimg.cols, obj.cluster_center.x + objhsz)));
 	cv::cvtColor(obj.img, obj.img, cv::COLOR_BGR2RGB);
 	obj.img.convertTo(obj.img, CV_8UC3);
 
@@ -2490,11 +2497,11 @@ void objdeterm(vector<Point2f> &cluster_points, Mat frame, ALObject &obj, size_t
 	Mat resimg2(resimg.rows, resimg.cols, CV_8UC3, Scalar(0, 0, 0));
 	Mat res2x(resimg.rows, resimg.cols * 2, CV_8UC3, Scalar(0, 0, 0));
 
-	p1.y = minp.y + (maxp.y - minp.y) / 2 - half_imgsize;
-	p1.x = minp.x + (maxp.x - minp.x) / 2 - half_imgsize;
+	p1.y = minp.y + (maxp.y - minp.y) / 2 - objhsz;
+	p1.x = minp.x + (maxp.x - minp.x) / 2 - objhsz;
 
-	p2.y = minp.y + (maxp.y - minp.y) / 2 + half_imgsize;
-	p2.x = minp.x + (maxp.x - minp.x) / 2 + half_imgsize;
+	p2.y = minp.y + (maxp.y - minp.y) / 2 + objhsz;
+	p2.x = minp.x + (maxp.x - minp.x) / 2 + objhsz;
 
 	bufimg = frame(cv::Range(max_u16(p1.y), min_u16(frame.rows, p2.y)), cv::Range(max_u16(p1.x), min_u16(frame.cols, p2.x)));
 
@@ -2504,8 +2511,8 @@ void objdeterm(vector<Point2f> &cluster_points, Mat frame, ALObject &obj, size_t
 
 	for (int i = 0; i < cluster_points.size(); i++)
 	{
-		p1.x = cluster_points.at(i).x - minp.x - (maxp.x - minp.x) / 2 + half_imgsize;
-		p1.y = cluster_points.at(i).y - minp.y - (maxp.y - minp.y) / 2 + half_imgsize;
+		p1.x = cluster_points.at(i).x - minp.x - (maxp.x - minp.x) / 2 + objhsz;
+		p1.y = cluster_points.at(i).y - minp.y - (maxp.y - minp.y) / 2 + objhsz;
 		p2.x = p1.x + resolution / reduseres;
 		p2.y = p1.y + resolution / reduseres;
 		// rectangle(resimg2, p1, p2, Scalar(0, 0, 255), 1);
@@ -2524,8 +2531,8 @@ void objdeterm(vector<Point2f> &cluster_points, Mat frame, ALObject &obj, size_t
 
 		rectangle(resimg, p1, p2, Scalar(R, G, B), 1);
 
-		p1.x = cluster_points.at(chains.at(maxchains).at(i).ipoint).x - minp.x - (maxp.x - minp.x) / 2 + half_imgsize;
-		p1.y = cluster_points.at(chains.at(maxchains).at(i).ipoint).y - minp.y - (maxp.y - minp.y) / 2 + half_imgsize;
+		p1.x = cluster_points.at(chains.at(maxchains).at(i).ipoint).x - minp.x - (maxp.x - minp.x) / 2 + objhsz;
+		p1.y = cluster_points.at(chains.at(maxchains).at(i).ipoint).y - minp.y - (maxp.y - minp.y) / 2 + objhsz;
 		p2.x = p1.x + resolution / reduseres;
 		p2.y = p1.y + resolution / reduseres;
 
@@ -2610,10 +2617,10 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			vector<Point2f> cluster_points;
 			cluster_points.push_back(detects.at(i).detect);
 			// imagbuf = frame_resizing(framebuf);
-			// img = imagbuf(cv::Range(detects.at(i).detect.y - half_imgsize, detects.at(i).detect.y + half_imgsize), cv::Range(detects.at(i).detect.x - half_imgsize, detects.at(i).detect.x + half_imgsize));
+			// img = imagbuf(cv::Range(detects.at(i).detect.y - objhsz, detects.at(i).detect.y + objhsz), cv::Range(detects.at(i).detect.x - objhsz, detects.at(i).detect.x + objhsz));
 
-			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - half_imgsize), min_u16(framebuf.rows, detects.at(i).detect.y + half_imgsize))
-				, cv::Range(max_u16(detects.at(i).detect.x - half_imgsize), min_u16(framebuf.cols, detects.at(i).detect.x + half_imgsize)));
+			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - objhsz), min_u16(framebuf.rows, detects.at(i).detect.y + objhsz))
+				, cv::Range(max_u16(detects.at(i).detect.x - objhsz), min_u16(framebuf.cols, detects.at(i).detect.x + objhsz)));
 
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
@@ -2991,10 +2998,10 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			{
 				// imagbuf = frame_resizing(framebuf);
 				// imagbuf.convertTo(imagbuf, CV_8UC3);
-				// img = imagbuf(cv::Range(clustercenter.y - half_imgsize, clustercenter.y + half_imgsize), cv::Range(clustercenter.x - half_imgsize, clustercenter.x + half_imgsize));
+				// img = imagbuf(cv::Range(clustercenter.y - objhsz, clustercenter.y + objhsz), cv::Range(clustercenter.x - objhsz, clustercenter.x + objhsz));
 
-				img = framebuf(cv::Range(max_u16(clustercenter.y - half_imgsize), min_u16(framebuf.rows, clustercenter.y + half_imgsize))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize), min_u16(framebuf.cols, clustercenter.x + half_imgsize)));
+				img = framebuf(cv::Range(max_u16(clustercenter.y - objhsz), min_u16(framebuf.rows, clustercenter.y + objhsz))
+					, cv::Range(max_u16(clustercenter.x - objhsz), min_u16(framebuf.cols, clustercenter.x + objhsz)));
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
@@ -3065,10 +3072,10 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			{
 				// magbuf = frame_resizing(framebuf);
 				// imagbuf.convertTo(imagbuf, CV_8UC3);
-				// img = imagbuf(cv::Range(clustercenter.y - half_imgsize, clustercenter.y + half_imgsize), cv::Range(clustercenter.x - half_imgsize, clustercenter.x + half_imgsize));
+				// img = imagbuf(cv::Range(clustercenter.y - objhsz, clustercenter.y + objhsz), cv::Range(clustercenter.x - objhsz, clustercenter.x + objhsz));
 
-				img = framebuf(cv::Range(max_u16(clustercenter.y - half_imgsize), min_u16(framebuf.rows, clustercenter.y + half_imgsize))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize), min_u16(framebuf.cols, clustercenter.x + half_imgsize)));
+				img = framebuf(cv::Range(max_u16(clustercenter.y - objhsz), min_u16(framebuf.rows, clustercenter.y + objhsz))
+					, cv::Range(max_u16(clustercenter.x - objhsz), min_u16(framebuf.cols, clustercenter.x + objhsz)));
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
@@ -3103,19 +3110,19 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		if (objects[i].det_mc == false)
 		{
-			pt1.y = objects[i].cluster_center.y - half_imgsize;
-			pt2.y = objects[i].cluster_center.y + half_imgsize;
+			pt1.y = objects[i].cluster_center.y - objhsz;
+			pt2.y = objects[i].cluster_center.y + objhsz;
 
-			pt1.x = objects[i].cluster_center.x - half_imgsize;
-			pt2.x = objects[i].cluster_center.x + half_imgsize;
+			pt1.x = objects[i].cluster_center.x - objhsz;
+			pt2.x = objects[i].cluster_center.x + objhsz;
 		}
 		else
 		{
-			pt1.y = objects[i].model_center.y - half_imgsize;
-			pt2.y = objects[i].model_center.y + half_imgsize;
+			pt1.y = objects[i].model_center.y - objhsz;
+			pt2.y = objects[i].model_center.y + objhsz;
 
-			pt1.x = objects[i].model_center.x - half_imgsize;
-			pt2.x = objects[i].model_center.x + half_imgsize;
+			pt1.x = objects[i].model_center.x - objhsz;
+			pt2.x = objects[i].model_center.x + objhsz;
 		}
 
 		if (pt1.y < 0)
@@ -3158,7 +3165,7 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -3169,11 +3176,11 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, objColor(objects.at(i).id), 2);
 	}
 	// std::cout << "</visualization>" << endl;
 	//--------------</visualization>-------------------------
@@ -3194,7 +3201,7 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color(objects.at(i).id), // font color
+								objColor(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -3205,7 +3212,7 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(baseimag, pt1, pt2, objColor(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -3286,12 +3293,12 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 			vector<Point2f> cluster_points;
 			cluster_points.push_back(detects.at(i).detect);
 			// imagbuf = frame_resizing(framebuf);
-			// img = imagbuf(cv::Range(detects.at(i).detect.y - half_imgsize * koef, detects.at(i).detect.y + half_imgsize * koef), cv::Range(detects.at(i).detect.x - half_imgsize * koef, detects.at(i).detect.x + half_imgsize * koef));
+			// img = imagbuf(cv::Range(detects.at(i).detect.y - objhsz * koef, detects.at(i).detect.y + objhsz * koef), cv::Range(detects.at(i).detect.x - objhsz * koef, detects.at(i).detect.x + objhsz * koef));
 
-			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - half_imgsize * koef)
-				, min_u16(framebuf.rows, detects.at(i).detect.y + half_imgsize * koef))
-				, cv::Range(max_u16(detects.at(i).detect.x - half_imgsize * koef)
-				, min_u16(framebuf.cols, detects.at(i).detect.x + half_imgsize * koef)));
+			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - objhsz * koef)
+				, min_u16(framebuf.rows, detects.at(i).detect.y + objhsz * koef))
+				, cv::Range(max_u16(detects.at(i).detect.x - objhsz * koef)
+				, min_u16(framebuf.cols, detects.at(i).detect.x + objhsz * koef)));
 
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
@@ -3641,10 +3648,10 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 
 				framebuf.convertTo(imagbuf, CV_8UC3);
 
-				img = imagbuf(cv::Range(max_u16(clustercenter.y - half_imgsize * koef)
-					, min_u16(imagbuf.rows, clustercenter.y + half_imgsize * koef))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize * koef)
-					, min_u16(imagbuf.cols, clustercenter.x + half_imgsize * koef)));
+				img = imagbuf(cv::Range(max_u16(clustercenter.y - objhsz * koef)
+					, min_u16(imagbuf.rows, clustercenter.y + objhsz * koef))
+					, cv::Range(max_u16(clustercenter.x - objhsz * koef)
+					, min_u16(imagbuf.cols, clustercenter.x + objhsz * koef)));
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
 				ALObject obj(objects.size(), "a", clusters[cls_id], img);
@@ -3712,10 +3719,10 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 				// imagbuf = frame_resizing(framebuf);
 				// imagbuf.convertTo(imagbuf, CV_8UC3);
 				framebuf.convertTo(imagbuf, CV_8UC3);
-				img = imagbuf(cv::Range(max_u16(clustercenter.y - half_imgsize * koef)
-					, min_u16(imagbuf.rows, clustercenter.y + half_imgsize * koef))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize * koef)
-					, min_u16(imagbuf.cols, clustercenter.x + half_imgsize * koef)));
+				img = imagbuf(cv::Range(max_u16(clustercenter.y - objhsz * koef)
+					, min_u16(imagbuf.rows, clustercenter.y + objhsz * koef))
+					, cv::Range(max_u16(clustercenter.x - objhsz * koef)
+					, min_u16(imagbuf.cols, clustercenter.x + objhsz * koef)));
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
 				ALObject obj(objects.size(), "a", clusters[cls], img);
@@ -3744,19 +3751,19 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 
 		if (objects[i].det_mc == false)
 		{
-			pt1.y = objects[i].cluster_center.y - half_imgsize * koef;
-			pt2.y = objects[i].cluster_center.y + half_imgsize * koef;
+			pt1.y = objects[i].cluster_center.y - objhsz * koef;
+			pt2.y = objects[i].cluster_center.y + objhsz * koef;
 
-			pt1.x = objects[i].cluster_center.x - half_imgsize * koef;
-			pt2.x = objects[i].cluster_center.x + half_imgsize * koef;
+			pt1.x = objects[i].cluster_center.x - objhsz * koef;
+			pt2.x = objects[i].cluster_center.x + objhsz * koef;
 		}
 		else
 		{
-			pt1.y = objects[i].model_center.y - half_imgsize * koef;
-			pt2.y = objects[i].model_center.y + half_imgsize * koef;
+			pt1.y = objects[i].model_center.y - objhsz * koef;
+			pt2.y = objects[i].model_center.y + objhsz * koef;
 
-			pt1.x = objects[i].model_center.x - half_imgsize * koef;
-			pt2.x = objects[i].model_center.x + half_imgsize * koef;
+			pt1.x = objects[i].model_center.x - objhsz * koef;
+			pt2.x = objects[i].model_center.x + objhsz * koef;
 		}
 
 		if (pt1.y < 0)
@@ -3798,7 +3805,7 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 			pt2.x = objects.at(i).cluster_points.at(j).x + (float)rows / (float)reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + (float)rows / (float)reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -3809,11 +3816,11 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, objColor(objects.at(i).id), 2);
 	}
 	//--------------</visualization>-------------------------
 
@@ -3832,7 +3839,7 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color(objects.at(i).id), // font color
+								objColor(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -3843,7 +3850,7 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(baseimag, pt1, pt2, objColor(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -4024,12 +4031,12 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			vector<Point2f> cluster_points;
 			cluster_points.push_back(detects.at(i).detect);
 			// imagbuf = frame_resizing(framebuf);
-			// img = imagbuf(cv::Range(detects.at(i).detect.y - half_imgsize, detects.at(i).detect.y + half_imgsize), cv::Range(detects.at(i).detect.x - half_imgsize, detects.at(i).detect.x + half_imgsize));
+			// img = imagbuf(cv::Range(detects.at(i).detect.y - objhsz, detects.at(i).detect.y + objhsz), cv::Range(detects.at(i).detect.x - objhsz, detects.at(i).detect.x + objhsz));
 
-			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - half_imgsize)
-				, min_u16(framebuf.rows, detects.at(i).detect.y + half_imgsize))
-				, cv::Range(max_u16(detects.at(i).detect.x - half_imgsize)
-				, min_u16(framebuf.cols, detects.at(i).detect.x + half_imgsize)));
+			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - objhsz)
+				, min_u16(framebuf.rows, detects.at(i).detect.y + objhsz))
+				, cv::Range(max_u16(detects.at(i).detect.x - objhsz)
+				, min_u16(framebuf.cols, detects.at(i).detect.x + objhsz)));
 
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
@@ -4516,12 +4523,12 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			{
 				// imagbuf = frame_resizing(framebuf);
 				// imagbuf.convertTo(imagbuf, CV_8UC3);
-				// img = imagbuf(cv::Range(clustercenter.y - half_imgsize, clustercenter.y + half_imgsize), cv::Range(clustercenter.x - half_imgsize, clustercenter.x + half_imgsize));
+				// img = imagbuf(cv::Range(clustercenter.y - objhsz, clustercenter.y + objhsz), cv::Range(clustercenter.x - objhsz, clustercenter.x + objhsz));
 
-				img = framebuf(cv::Range(max_u16(clustercenter.y - half_imgsize)
-					, min_u16(framebuf.rows, clustercenter.y + half_imgsize))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize)
-					, min_u16(framebuf.cols, clustercenter.x + half_imgsize)));
+				img = framebuf(cv::Range(max_u16(clustercenter.y - objhsz)
+					, min_u16(framebuf.rows, clustercenter.y + objhsz))
+					, cv::Range(max_u16(clustercenter.x - objhsz)
+					, min_u16(framebuf.cols, clustercenter.x + objhsz)));
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
@@ -4589,12 +4596,12 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			{
 				// magbuf = frame_resizing(framebuf);
 				// imagbuf.convertTo(imagbuf, CV_8UC3);
-				// img = imagbuf(cv::Range(clustercenter.y - half_imgsize, clustercenter.y + half_imgsize), cv::Range(clustercenter.x - half_imgsize, clustercenter.x + half_imgsize));
+				// img = imagbuf(cv::Range(clustercenter.y - objhsz, clustercenter.y + objhsz), cv::Range(clustercenter.x - objhsz, clustercenter.x + objhsz));
 
-				img = framebuf(cv::Range(max_u16(clustercenter.y - half_imgsize)
-					, min_u16(framebuf.rows, clustercenter.y + half_imgsize))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize)
-					, min_u16(framebuf.cols, clustercenter.x + half_imgsize)));
+				img = framebuf(cv::Range(max_u16(clustercenter.y - objhsz)
+					, min_u16(framebuf.rows, clustercenter.y + objhsz))
+					, cv::Range(max_u16(clustercenter.x - objhsz)
+					, min_u16(framebuf.cols, clustercenter.x + objhsz)));
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
@@ -4625,19 +4632,19 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		if (objects[i].det_mc == false)
 		{
-			pt1.y = objects[i].cluster_center.y - half_imgsize;
-			pt2.y = objects[i].cluster_center.y + half_imgsize;
+			pt1.y = objects[i].cluster_center.y - objhsz;
+			pt2.y = objects[i].cluster_center.y + objhsz;
 
-			pt1.x = objects[i].cluster_center.x - half_imgsize;
-			pt2.x = objects[i].cluster_center.x + half_imgsize;
+			pt1.x = objects[i].cluster_center.x - objhsz;
+			pt2.x = objects[i].cluster_center.x + objhsz;
 		}
 		else
 		{
-			pt1.y = objects[i].model_center.y - half_imgsize;
-			pt2.y = objects[i].model_center.y + half_imgsize;
+			pt1.y = objects[i].model_center.y - objhsz;
+			pt2.y = objects[i].model_center.y + objhsz;
 
-			pt1.x = objects[i].model_center.x - half_imgsize;
-			pt2.x = objects[i].model_center.x + half_imgsize;
+			pt1.x = objects[i].model_center.x - objhsz;
+			pt2.x = objects[i].model_center.x + objhsz;
 		}
 
 		if (pt1.y < 0)
@@ -4678,7 +4685,7 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -4689,14 +4696,14 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, objColor(objects.at(i).id), 2);
 
 		for (int j = 0; j < objects[i].ORB_ids.size(); j++)
-			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, class_name_color(objects.at(i).id), 1);
+			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, objColor(objects.at(i).id), 1);
 	}
 
 	//--------------</visualization>-------------------------
@@ -4718,7 +4725,7 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color(objects.at(i).id), // font color
+								objColor(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -4729,7 +4736,7 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(baseimag, pt1, pt2, objColor(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -4820,12 +4827,12 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			vector<Point2f> cluster_points;
 			cluster_points.push_back(detects.at(i).detect);
 			// imagbuf = frame_resizing(framebuf);
-			// img = imagbuf(cv::Range(detects.at(i).detect.y - half_imgsize, detects.at(i).detect.y + half_imgsize), cv::Range(detects.at(i).detect.x - half_imgsize, detects.at(i).detect.x + half_imgsize));
+			// img = imagbuf(cv::Range(detects.at(i).detect.y - objhsz, detects.at(i).detect.y + objhsz), cv::Range(detects.at(i).detect.x - objhsz, detects.at(i).detect.x + objhsz));
 
-			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - half_imgsize)
-				, min_u16(framebuf.rows, detects.at(i).detect.y + half_imgsize))
-				, cv::Range(max_u16(detects.at(i).detect.x - half_imgsize)
-				, min_u16(framebuf.cols, detects.at(i).detect.x + half_imgsize)));
+			img = framebuf(cv::Range(max_u16(detects.at(i).detect.y - objhsz)
+				, min_u16(framebuf.rows, detects.at(i).detect.y + objhsz))
+				, cv::Range(max_u16(detects.at(i).detect.x - objhsz)
+				, min_u16(framebuf.cols, detects.at(i).detect.x + objhsz)));
 
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
@@ -5279,12 +5286,12 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			{
 				// imagbuf = frame_resizing(framebuf);
 				// imagbuf.convertTo(imagbuf, CV_8UC3);
-				// img = imagbuf(cv::Range(clustercenter.y - half_imgsize, clustercenter.y + half_imgsize), cv::Range(clustercenter.x - half_imgsize, clustercenter.x + half_imgsize));
+				// img = imagbuf(cv::Range(clustercenter.y - objhsz, clustercenter.y + objhsz), cv::Range(clustercenter.x - objhsz, clustercenter.x + objhsz));
 
-				img = framebuf(cv::Range(max_u16(clustercenter.y - half_imgsize)
-					, min_u16(framebuf.rows, clustercenter.y + half_imgsize))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize)
-					, min_u16(framebuf.cols, clustercenter.x + half_imgsize)));
+				img = framebuf(cv::Range(max_u16(clustercenter.y - objhsz)
+					, min_u16(framebuf.rows, clustercenter.y + objhsz))
+					, cv::Range(max_u16(clustercenter.x - objhsz)
+					, min_u16(framebuf.cols, clustercenter.x + objhsz)));
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
@@ -5352,12 +5359,12 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			{
 				// magbuf = frame_resizing(framebuf);
 				// imagbuf.convertTo(imagbuf, CV_8UC3);
-				// img = imagbuf(cv::Range(clustercenter.y - half_imgsize, clustercenter.y + half_imgsize), cv::Range(clustercenter.x - half_imgsize, clustercenter.x + half_imgsize));
+				// img = imagbuf(cv::Range(clustercenter.y - objhsz, clustercenter.y + objhsz), cv::Range(clustercenter.x - objhsz, clustercenter.x + objhsz));
 
-				img = framebuf(cv::Range(max_u16(clustercenter.y - half_imgsize)
-					, min_u16(framebuf.rows, clustercenter.y + half_imgsize))
-					, cv::Range(max_u16(clustercenter.x - half_imgsize)
-					, min_u16(framebuf.cols, clustercenter.x + half_imgsize)));
+				img = framebuf(cv::Range(max_u16(clustercenter.y - objhsz)
+					, min_u16(framebuf.rows, clustercenter.y + objhsz))
+					, cv::Range(max_u16(clustercenter.x - objhsz)
+					, min_u16(framebuf.cols, clustercenter.x + objhsz)));
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
@@ -5388,19 +5395,19 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		if (objects[i].det_mc == false)
 		{
-			pt1.y = objects[i].cluster_center.y - half_imgsize;
-			pt2.y = objects[i].cluster_center.y + half_imgsize;
+			pt1.y = objects[i].cluster_center.y - objhsz;
+			pt2.y = objects[i].cluster_center.y + objhsz;
 
-			pt1.x = objects[i].cluster_center.x - half_imgsize;
-			pt2.x = objects[i].cluster_center.x + half_imgsize;
+			pt1.x = objects[i].cluster_center.x - objhsz;
+			pt2.x = objects[i].cluster_center.x + objhsz;
 		}
 		else
 		{
-			pt1.y = objects[i].model_center.y - half_imgsize;
-			pt2.y = objects[i].model_center.y + half_imgsize;
+			pt1.y = objects[i].model_center.y - objhsz;
+			pt2.y = objects[i].model_center.y + objhsz;
 
-			pt1.x = objects[i].model_center.x - half_imgsize;
-			pt2.x = objects[i].model_center.x + half_imgsize;
+			pt1.x = objects[i].model_center.x - objhsz;
+			pt2.x = objects[i].model_center.x + objhsz;
 		}
 
 		if (pt1.y < 0)
@@ -5441,7 +5448,7 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			pt2.x = objects.at(i).cluster_points.at(j).x + resolution / reduseres;
 			pt2.y = objects.at(i).cluster_points.at(j).y + resolution / reduseres;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		if (objects.at(i).det_mc == true) // visualization of the classifier
@@ -5452,14 +5459,14 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 			pt2.x = objects.at(i).model_center.x + objects.at(i).obj_size.x / 2;
 			pt2.y = objects.at(i).model_center.y + objects.at(i).obj_size.y / 2;
 
-			rectangle(imag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(imag, pt1, pt2, objColor(objects.at(i).id), 1);
 		}
 
 		for (int j = 0; j < objects.at(i).track_points.size(); j++)
-			cv::circle(imag, objects.at(i).track_points.at(j), 1, class_name_color(objects.at(i).id), 2);
+			cv::circle(imag, objects.at(i).track_points.at(j), 1, objColor(objects.at(i).id), 2);
 
 		for (int j = 0; j < objects[i].ORB_ids.size(); j++)
-			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, class_name_color(objects.at(i).id), 1);
+			cv::circle(imag, points2ORB.at(objects[i].ORB_ids.at(j)), 3, objColor(objects.at(i).id), 1);
 	}
 
 	//--------------</visualization>-------------------------
@@ -5481,7 +5488,7 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 								ptext,    // top-left position
 								1,
 								1,
-								class_name_color(objects.at(i).id), // font color
+								objColor(objects.at(i).id), // font color
 								1);
 
 		pt1.x = ptext.x - 1;
@@ -5492,7 +5499,7 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
-			rectangle(baseimag, pt1, pt2, class_name_color(objects.at(i).id), 1);
+			rectangle(baseimag, pt1, pt2, objColor(objects.at(i).id), 1);
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}

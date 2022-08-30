@@ -1,5 +1,6 @@
 #include <iostream>
 #include <filesystem>
+#include <ctime>
 #include <unistd.h>
 #include <torch/script.h> // One-stop header.
 #include "lib/tracker.hpp"
@@ -7,6 +8,10 @@
 
 using std::cout;
 using std::to_string;
+using std::endl;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::system_clock;
 namespace fs = std::filesystem;
 
 struct ArgParser: gengetopt_args_info {
@@ -47,7 +52,7 @@ int main(int argc, char **argv)
 	string pathmodel;
 	if(args_info.model_given) {
 		pathmodel = args_info.model_arg;  // argv[1];
-		cout << "Object detector: " << pathmodel << std::endl;
+		cout << "Object detector: " << pathmodel << endl;
 
 		try
 		{
@@ -59,6 +64,9 @@ int main(int argc, char **argv)
 			std::cerr << "error loading the model\n";
 			return -1;
 		}
+	} else {
+		assert(args_info.ant_length_given && "ant_length should be provided when an ML-based detector is not applied");
+		objhsz = args_info.ant_length_arg;
 	}
 
 	torch::DeviceType device_type = torch::kCPU;
@@ -84,23 +92,27 @@ int main(int argc, char **argv)
 		cv::VideoWriter writer;
 		int codec = cv::VideoWriter::fourcc('m', 'p', '4', 'v');  // 'm', 'p', '4', 'v';  'h', '2', '6', '4'
 
+		const float confidence = args_info.confidence_arg;  // dftConf
 		string filename = (fs::path(args_info.output_arg) / fs::path(args_info.video_arg).stem()).string()
-			+ "_" + to_string(start) + "_" + to_string(nfram);  // + dateTime();
+			+ "_" + to_string(start) + "-" + to_string(nfram) + "_c" + to_string(confidence).substr(0, 4);  // + dateTime();
 		if(args_info.fout_suffix_given)
 			filename += string(" ") + args_info.fout_suffix_arg;
 
-		const float confidence = args_info.confidence_arg;  // dftConf
 		const double fps = 1.0;  // FPS of the forming video
 		cv::Mat frame;
 
 		// cv::Size sizeFrame(992+extr,992);
 		// cv::Mat testimg = std::get<2>(detectORB(d_images.at(0), d_images.at(1), 2.5));
 
+		auto millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 		// trackingMotV2_1  - Detector + motion
 		// trackingMotV2_2  - Interactive ORB descriptors for the whole frame
 		// trackingMotV2_3  - Detector + ORB descriptors for the whole frame
 		cv::Mat testimg = trackingMotV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
 		// cv::Mat testimg = trackingMotV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
+		std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
+			// << "ms; " << "confidence threshold : " << confidence
+			<< " ms" << endl;
 
 		cv::Size sizeFrame(testimg.cols, testimg.rows);
 
@@ -109,8 +121,12 @@ int main(int argc, char **argv)
 
 		for (int i = 0; i < d_images.size() - 1; i++)
 		{
-			cout << "[Frame: " << start + i << "]" << std::endl;
+			cout << "[Frame: " << start + i << "]" << endl;
+			millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 			writer.write(trackingMotV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
+			std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
+				// << "ms; " << "confidence threshold : " << confidence
+				<< " ms" << endl;
 			// trackingMotV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence);
 			// writer.write(trackingMotV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
 			// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));

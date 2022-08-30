@@ -34,12 +34,11 @@ constexpr float  dftConf = 0.32;  // Default confidence of the detecting objects
 extern int resolution;  // 1200;  // frame size for model 992
 // extern const int resolution;  // frame size for model 992
 
-extern uint16_t extr;        // sidebar size
-extern const uint16_t half_imgsize; // area half size for a moving object
+extern uint16_t extr;  // sidebar size
+extern uint16_t objhsz; // area half size for a moving object
 extern const uint16_t model_resolution;  // frame resizing for model (992)
 extern uint16_t frame_resolution;//frame frame_resolution
 extern float reduseres;   // (good value 248)
-extern uint16_t color_threshold; // 65-70
 
 extern string class_name[];
 
@@ -183,11 +182,11 @@ public:
 
 		for (int i = 0; i < cluster_points.size(); i++)
 		{
-			coord.y = cluster_points.at(i).y - cluster_center.y + half_imgsize;
-			coord.x = cluster_points.at(i).x - cluster_center.x + half_imgsize;
+			coord.y = cluster_points.at(i).y - cluster_center.y + objhsz;
+			coord.x = cluster_points.at(i).x - cluster_center.x + objhsz;
 
-			if (coord.y > 0 && coord.y < img.rows && (coord.y + frame_resolution / reduseres) < 2 * half_imgsize
-			&& coord.x > 0 && coord.y < img.cols && (coord.x + frame_resolution / reduseres) < 2 * half_imgsize)
+			if (coord.y > 0 && coord.y < img.rows && (coord.y + frame_resolution / reduseres) < 2 * objhsz
+			&& coord.x > 0 && coord.y < img.cols && (coord.x + frame_resolution / reduseres) < 2 * objhsz)
 			{
 				sample = img(cv::Range(coord.y, min_u16(img.rows, coord.y + frame_resolution / reduseres))
 					, cv::Range(coord.x, min_u16(img.cols, coord.x + frame_resolution / reduseres)));

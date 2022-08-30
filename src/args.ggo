@@ -22,17 +22,19 @@ NOTE: this application is used mainly for internal evaluation and valudation pur
  before integrating selected functionality into LAFFTrack/artemis.
 "
 
-# defgroup  "model" groupdesc="Parameters of the object detector model"
-option  "model" m  "path to the object detector (PyTorch ML model)"
-  string typestr="filename"
-option  "confidence" c  "confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model"
-  float default="0.32"
-option  "cuda" g  "computational device for the object detector (CUDA GPU or CPU}" flag off
-# option  "input" i  "path to the input image or .mp4 video file"
-
 # defgroup  "output" groupdesc="Output parameters" required
 option  "output" o  "output directory" string typestr="filename" default="."
 option  "fout_suffix" f  "additional suffix for the resulting output files" string
+
+# defgroup  "model" groupdesc="Parameters of the object detector model"
+defgroup "detection" groupdesc="Object detection parameters" required
+groupoption  "model" m  "path to the object detector (PyTorch ML model)"
+  string typestr="filename" group="detection"
+groupoption  "ant-length" a  "expected ant length"
+  int default="80" group="detection"
+option  "confidence" c  "confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model"
+  float default="0.32"
+option  "cuda" g  "computational device for the object detector (CUDA GPU or CPU}" flag off
 
 defgroup  "input" groupdesc="Input data" required
 groupoption  "img" i  "path to the input image" group="input"
