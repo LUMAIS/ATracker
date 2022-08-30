@@ -40,10 +40,45 @@ extern const uint16_t model_resolution;  // frame resizing for model (992)
 extern uint16_t frame_resolution;//frame frame_resolution
 extern float reduseres;   // (good value 248)
 
-extern string class_name[];
-
 uint16_t max_u16(float a, float b=0) noexcept;
 uint16_t min_u16(float a, float b) noexcept;
+
+// string objClassTitle[] = {"ant": 0,
+//                         "ant-head": 1,
+//                         "trophallaxis-ant": 2,
+//                         "larva": 3,
+//                         "trophallaxis-larva": 4,
+//                         "food-noise": 5,  // fn
+//                         "pupa": 6,
+//                         "barcode": 7} #,"uncategorized": 8}
+enum class ObjClass: uint8_t {
+	ANT,
+	ANT_HEAD,
+	TROPH_ANT,  // Ant-ant trophallaxis
+	LARVA,
+	TROPH_LARVA,
+	FOOD_NOISE,
+	PUPA,
+	BARCODE,
+	UNCATECORIZED
+
+	//operator uint8_t(enum class ObjClass oc) noexcept { return static_cast<uint8_t>(oc); }
+};
+
+// Original Serhii's classes
+// enum class ObjClass: uint8_t {
+// 	TROPH_ANT,  // Ant-trophallaxis
+// 	ANT,
+// 	ANT_HEAD,
+// 	TROPH_LARVA,
+// 	LARVA,
+// 	FOOD_NOISE,
+// 	PUPA,
+// 	BARCODE,
+// 	UNCATECORIZED
+// };
+
+const char* objClassTitle(ObjClass objClass) noexcept;
 
 class IMGsamples
 {
@@ -83,14 +118,14 @@ class ALObject // AntLab Object
 {
 public:
 	uint16_t id;
-	string obj_type;
+	ObjClass obj_type;
 	vector<Point2f> cluster_points;
 	Point2f cluster_center;
 	Point2f model_center;
+	Point2f obj_size;  // w, h
 	bool det_mc = false;
 
 	vector<Point2f> track_points;
-	Point2f obj_size;  // w, h
 	Mat img;
 
 	vector<Mat> samples;
@@ -104,7 +139,7 @@ public:
 
 	vector<uint> ORB_ids;
 
-	ALObject(uint16_t id, string obj_type, vector<Point2f> cluster_points, Mat img)
+	ALObject(uint16_t id, ObjClass obj_type, vector<Point2f> cluster_points, Mat img)
 	{
 		this->obj_type = obj_type;
 		this->id = id;
@@ -223,21 +258,21 @@ public:
 	}
 };
 
-class OBJdetect
+struct OBJdetect
 {
-public:
 	Point2f detect;  // x, y
 	Point2f obj_size;  // w, h
-	string type;
+	ObjClass type;
+	// float confidence;
 };
 
-enum Det
+enum class Det
 {
 	tl_x = 0,
 	tl_y = 1,
 	br_x = 2,
 	br_y = 3,
-	score = 4,
+	confidence = 4,
 	class_idx = 5
 };
 
@@ -254,7 +289,7 @@ struct intpoint
 	Point2f mpoint;
 };
 
-struct idFix {
+struct IdFix {
 	uint8_t  type;
 	uint16_t  idOld;
 	uint16_t  id;
@@ -278,7 +313,7 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 Point2f cluster_center(vector<Point2f> cluster_points);
 Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
 void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame);
-void fixIDs(const vector<vector<Obj>>&objs, vector<std::pair<uint,idFix>>&fixedIds, vector<Mat> &d_images, uint framesize=0);
+void fixIDs(const vector<vector<Obj>>&objs, vector<std::pair<uint,IdFix>>&fixedIds, vector<Mat> &d_images, uint framesize=0);
 void OBJdetectsToObjs(vector<OBJdetect> objdetects,vector<Obj> &objs);
 Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_frame, bool usedetector, float confidence=dftConf);
 

@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 		uint16_t nfram = args_info.frame_num_arg;  // 30; -1
 
 		vector<vector<Obj>> objs;
-		vector<std::pair<uint, idFix>> fixedIds;
+		vector<std::pair<uint, IdFix>> fixedIds;
 		vector<cv::Mat> d_images;
 
 		//---TEST---

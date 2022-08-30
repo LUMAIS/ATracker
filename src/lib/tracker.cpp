@@ -27,21 +27,23 @@ const uint16_t model_resolution = resolution;  // frame resizing for model (992)
 uint16_t frame_resolution = resolution;  //frame frame_resolution
 float reduseres = roundf(224 * 80.f / objhsz / 32.f) * 32;  // 400;   // Frame resolution for motion detection using non-adaptive thresholding:  (good value 248), 400
 
-string class_name[] = {"ta", "a", "ah", "tl", "l", "fn", "u", "p", "b"};  // class_name[9]
-// string class_name[] = {"a", "ah", "ta", "l", "tl", "fn", "p", "b", "u"};  // class_name[9]
-// constexpr uint8_t  cname_undefined = (sizeof class_name / sizeof  class_name[0]);  // TODO: validate correctness of this assignment
-// // string class_name[] = {"ant": 0,
-// //                         "ant-head": 1,
-// //                         "trophallaxis-ant": 2,
-// //                         "larva": 3,
-// //                         "trophallaxis-larva": 4,
-// //                         "food-noise": 5,  // fn
-// //                         "pupa": 6,
-// //                         "barcode": 7} #,"uncategorized": 8}
+//string objClassTitle(] = {"ta", "a", "ah", "tl", "l", "fn", "p", "b", "u"};  // objClassTitle[9)
+//const char *const objClassTitle(] = {"a", "ah", "ta", "l", "tl", "fn", "p", "b", "u"};  // objClassTitle[9)
+
+const char* objClassTitle(ObjClass objClass) noexcept {
+	static const char *const titles[] = {"a", "ah", "ta", "l", "tl", "fn", "p", "b", "u"};  // objClassTitle(9)
+
+	return titles[static_cast<uint8_t>(objClass)];
+}
+
+Scalar objClassColor(ObjClass objClass) noexcept
+{
+	static Scalar class_name_color[9] = {Scalar(255, 0, 0), Scalar(0, 0, 255), Scalar(0, 255, 0), Scalar(255, 0, 255), Scalar(0, 255, 255), Scalar(255, 255, 0), Scalar(255, 255, 255), Scalar(200, 0, 200), Scalar(100, 0, 255)};
+	return class_name_color[static_cast<uint8_t>(objClass)];
+}
 
 Scalar objColor(uint32_t id, uint8_t clrLow=32, uint8_t clrHigh=223) noexcept
 {
-	// Scalar class_name_color[9] = {Scalar(255, 0, 0), Scalar(0, 0, 255), Scalar(0, 255, 0), Scalar(255, 0, 255), Scalar(0, 255, 255), Scalar(255, 255, 0), Scalar(255, 255, 255), Scalar(200, 0, 200), Scalar(100, 0, 255)};
 	static Scalar  baseclrs[20] = {
 			Scalar(255, 0, 0),
 			Scalar(0, 20, 200),
@@ -277,7 +279,7 @@ vector<OBJdetect> detectorV4_old(string pathmodel, Mat frame, torch::DeviceType 
 	vector<Point2f> detects;
 	vector<Point2f> detectsCent;
 	vector<Point2f> detectsRect;
-	vector<uint8_t> Objtype;
+	vector<ObjClass> objType;
 	Mat imageBGR;
 
 	// imageBGR = frame_resizing(frame);
@@ -340,14 +342,14 @@ vector<OBJdetect> detectorV4_old(string pathmodel, Mat frame, torch::DeviceType 
 			float w = dcur[3].item().toFloat() * imageBGR.rows / resolution;
 
 			float wheit = 0;
-			Objtype.push_back(8);
+			objType.push_back(ObjClass::UNCATECORIZED);
 
-			for (int j = 4; j < det.size(1); j++)
+			for (int j = 5; j < det.size(1); j++)
 			{
 				if (dcur[j].item().toFloat() > wheit)
 				{
 					wheit = dcur[j].item().toFloat();
-					Objtype.at(i) = j - 4;
+					objType.at(i) = ObjClass(j - 5);
 				}
 			}
 
@@ -393,32 +395,36 @@ vector<OBJdetect> detectorV4_old(string pathmodel, Mat frame, torch::DeviceType 
 
 			obj_buf.detect = detectsCent.at(i);
 			obj_buf.obj_size = detectsRect.at(i);
-			obj_buf.type = class_name[Objtype.at(i)];
+			obj_buf.type = objType.at(i);
 			obj_detects.push_back(obj_buf);
 
 			detects.push_back(detectsCent.at(i));
-			pt1.x = detectsCent.at(i).x - detectsRect.at(i).x / 2;
-			pt1.y = detectsCent.at(i).y - detectsRect.at(i).y / 2;
 
-			pt2.x = detectsCent.at(i).x + detectsRect.at(i).x / 2;
-			pt2.y = detectsCent.at(i).y + detectsRect.at(i).y / 2;
+			// // Visualization of the detected objects
+			// pt1.x = detectsCent.at(i).x - detectsRect.at(i).x / 2;
+			// pt1.y = detectsCent.at(i).y - detectsRect.at(i).y / 2;
 
-			ptext.x = detectsCent.at(i).x - 5;
-			ptext.y = detectsCent.at(i).y + 5;
+			// pt2.x = detectsCent.at(i).x + detectsRect.at(i).x / 2;
+			// pt2.y = detectsCent.at(i).y + detectsRect.at(i).y / 2;
 
-			rectangle(imageBGR, pt1, pt2, objColor(Objtype.at(i)), 1);
+			// ptext.x = detectsCent.at(i).x - 5;
+			// ptext.y = detectsCent.at(i).y + 5;
 
-			cv::putText(imageBGR,                  // target image
-									class_name[Objtype.at(i)], // text
-									ptext,                     // top-left position
-									1,
-									0.8,
-									objColor(Objtype.at(i)), // font color
-									1);
+			// rectangle(imageBGR, pt1, pt2, objClassColor(obj_buf.type), 1);
+
+			// pt1.y -= 2; // 5
+			// cv::putText(imageBGR,                  // target image
+			// 	objClassTitle(obj_buf.type), // text
+			// 	pt1,                     // top-left position
+			// 	1,
+			// 	0.8,
+			// 	objClassColor(obj_buf.type), // font color
+			// 	1);
 		}
 	}
 
 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+	// imshow("Detected objects", imageBGR);
 	return obj_detects;
 }
 
@@ -436,7 +442,7 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 	vector<Point2f> detects;
 	vector<Point2f> detectsCent;
 	vector<Point2f> detectsRect;
-	vector<uint8_t> Objtype;
+	vector<ObjClass> objType;
 	Mat imageBGR;
 
 	// imageBGR = frame_resizing(frame);
@@ -502,17 +508,16 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 
 			// // Fetch class scores and assign the object to the most probable class
 			// const auto cscores = dcur + 5;
-			// Objtype.push_back(cname_undefined);
-			Objtype.push_back(8);  // Add max index
+			objType.push_back(ObjClass::UNCATECORIZED);  // Add max index
 			float cscore = 0;
 
-			// TODO: reimplement
+			// TODO: reimplement consideing tracking history
 			for (int j = 5; j < det.size(1); j++)
 			{
 				if (dcur[j].item().toFloat() > cscore)
 				{
 					cscore = dcur[j].item().toFloat();
-					Objtype.at(i) = j - 4;
+					objType.at(i) = ObjClass(j - 5);
 				}
 			}
 
@@ -553,37 +558,37 @@ vector<OBJdetect> detectorV4(string pathmodel, Mat frame, torch::DeviceType devi
 
 		if (detectsCent.at(i).x >= 0)
 		{
-
 			OBJdetect obj_buf;
 
 			obj_buf.detect = detectsCent.at(i);
 			obj_buf.obj_size = detectsRect.at(i);
-			obj_buf.type = class_name[Objtype.at(i)];
+			obj_buf.type = objType.at(i);
 			obj_detects.push_back(obj_buf);
 
 			detects.push_back(detectsCent.at(i));
+
+			// Visualization of the detected objects
 			pt1.x = detectsCent.at(i).x - detectsRect.at(i).x / 2;
 			pt1.y = detectsCent.at(i).y - detectsRect.at(i).y / 2;
 
 			pt2.x = detectsCent.at(i).x + detectsRect.at(i).x / 2;
 			pt2.y = detectsCent.at(i).y + detectsRect.at(i).y / 2;
 
-			ptext.x = detectsCent.at(i).x - 5;
-			ptext.y = detectsCent.at(i).y + 5;
+			rectangle(imageBGR, pt1, pt2, objClassColor(obj_buf.type), 1);
 
-			rectangle(imageBGR, pt1, pt2, objColor(Objtype.at(i)), 1);
-
+			pt1.y -= 2; // 5
 			cv::putText(imageBGR,                  // target image
-									class_name[Objtype.at(i)], // text
-									ptext,                     // top-left position
-									1,
-									0.8,
-									objColor(Objtype.at(i)), // font color
-									1);
+				objClassTitle(obj_buf.type), // text
+				pt1,                     // top-left position
+				1,
+				0.8,
+				objClassColor(obj_buf.type), // font color
+				1);
 		}
 	}
 
 	cout << "detectorV4(), detected: " << obj_detects.size() << endl;
+	imshow("Detected objects", imageBGR);
 	// millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	return obj_detects;
 }
@@ -1094,13 +1099,14 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 
 	Mat img;
 
-	vector<OBJdetect> detects;
+	vector<OBJdetect> detects;  //, detobjs;
 
 	//--------------------<detection using a classifier>----------
 	if (usedetector)
 	{
 
 		detects = detectorV4(pathmodel, frame_resizing(frame), device_type, confidence);
+		//detobjs = detects;
 
 		for (int i = 0; i < objects.size(); i++)
 		{
@@ -1109,19 +1115,26 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 		}
 
 		// Remove non-ant objects
-		for (int i = 0; i < detects.size(); i++)
+		float objLinSz = 0;
+		unsigned  ndobjs = 0;
+		for (unsigned i = 0; i < detects.size(); i++)
 		{
-			if (detects.at(i).type != "a")
+			if (ObjClass(detects.at(i).type) != ObjClass::ANT) {  // Note: "ta" also should be tracked
 				detects.erase(detects.begin() + i--);
+				++ndobjs;
+			}
 			else if(id_frame >= 1) {
 				// Update motion-related parameters
-
+				objLinSz = (objLinSz * detects.size() + std::max(detects[i].obj_size.x, detects[i].obj_size.y)) / (detects.size() + 1);
 			} else {
 				// Init motion-related parameters
+				objLinSz = (objLinSz * (i + ndobjs) + std::max(detects[i].obj_size.x, detects[i].obj_size.y)) / (i + 1 + ndobjs);
 			}
 		}
-		//if(id_frame == 0)
-		// reduseres = roundf(224 * 80.f / objhsz / 32.f) * 32
+		if(id_frame == 0 && objLinSz >= 6) {
+			objhsz = objLinSz;
+			reduseres = roundf(224 * 80.f / objhsz / 32.f) * 32;
+		}
 
 		for (int i = 0; i < detects.size(); i++)
 		{
@@ -1451,7 +1464,7 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
 
-			ALObject obj(objects.size(), "a", clusters[cls], img);
+			ALObject obj(objects.size(), ObjClass::ANT, clusters[cls], img);
 			bool newobj = true;
 
 			for (int i = 0; i < objects.size(); i++)
@@ -1478,7 +1491,27 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 	for (int i = 0; i < objects.size(); i++)
 		objects[i].push_track_point(objects[i].cluster_center);
 
-	//--------------<visualization>--------------------------
+	// //--------------<visualization>--------------------------
+	// for (const auto& obj: detobjs) {
+	// 	pt1.x = obj.detect.x - obj.obj_size.x / 2;
+	// 	pt1.y = obj.detect.y - obj.obj_size.y / 2;
+
+	// 	pt2.x = obj.detect.x + obj.obj_size.x / 2;
+	// 	pt2.y = obj.detect.y + obj.obj_size.y / 2;
+
+	// 	const auto  clr = objClassColor(obj.type);
+	// 	rectangle(imag, pt1, pt2, clr, 1);
+	// 	const string caption = string(objClassTitle(obj.type)) + to_string(obj.id);
+	// 	pt1.y -= 2;
+	// 	cv::putText(imag, // target image
+	// 				caption,     // text
+	// 				pt1,    // top-left position
+	// 				1,
+	// 				1,
+	// 				clr, // font color
+	// 				1);
+	// }
+
 	for (int i = 0; i < objects.size(); i++)
 	{
 		for (int j = 0; j < objects.at(i).cluster_points.size(); j++) // visualization of the cluster_points
@@ -1513,19 +1546,19 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 
 	for (int i = 0; i < objects.size(); i++)
 	{
-		string text = objects.at(i).obj_type + " ID" + to_string(objects.at(i).id);
+		string text = objClassTitle(objects.at(i).obj_type) + to_string(objects.at(i).id);
 
 		Point2f ptext;
 		ptext.x = 20;
 		ptext.y = (30 + objects.at(i).img.cols) * objects.at(i).id + 20;
 
 		cv::putText(baseimag, // target image
-								text,     // text
-								ptext,    // top-left position
-								1,
-								1,
-								objColor(objects.at(i).id), // font color
-								1);
+					text,     // text
+					ptext,    // top-left position
+					1,
+					1,
+					objColor(objects.at(i).id), // font color
+					1);
 
 		pt1.x = ptext.x - 1;
 		pt1.y = ptext.y - 1 + 10;
@@ -1536,6 +1569,16 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 		if (pt2.y < baseimag.rows && pt2.x < baseimag.cols)
 		{
 			rectangle(baseimag, pt1, pt2, objColor(objects.at(i).id), 1);
+			ptext = pt1;
+			ptext.y -= 2;
+			cv::putText(baseimag, // target image
+						text,     // text
+						ptext,    // top-left position
+						1,
+						1,  // 0.8
+						objColor(objects.at(i).id), // font color
+						1);
+
 			objects.at(i).img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, objects.at(i).img.cols, objects.at(i).img.rows)));
 		}
 	}
@@ -1549,7 +1592,7 @@ Mat trackingMotV2(string pathmodel, torch::DeviceType device_type, Mat frame0, M
 	cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
 	//--------------</baseimag>-------------------------------
 
-	imshow("Motion", baseimag);
+	imshow("Tracking", baseimag);
 	cv::waitKey(10);
 
 	/*
@@ -1855,7 +1898,7 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 			cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 			img.convertTo(img, CV_8UC3);
 
-			ALObject obj(objects.size(), "a", clusters[cls], img);
+			ALObject obj(objects.size(), ObjClass::ANT, clusters[cls], img);
 			bool newobj = true;
 
 			for (int i = 0; i < objects.size(); i++)
@@ -1917,7 +1960,7 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 
 	for (int i = 0; i < objects.size(); i++)
 	{
-		string text = objects.at(i).obj_type + " ID" + to_string(objects.at(i).id);
+		string text = objClassTitle(objects.at(i).obj_type) + to_string(objects.at(i).id);
 
 		Point2f ptext;
 		ptext.x = 20;
@@ -1952,22 +1995,18 @@ void trackingMotV2b(Mat frame0, Mat frame, vector<ALObject> &objects, size_t id_
 	cv::putText(baseimag, to_string(id_frame), p_idframe, 1, 3, Scalar(255, 255, 255), 2);
 	cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
 	//--------------</baseimag>-------------------------------
-	// imshow("Motion", baseimag);
+	// imshow("Tracking", baseimag);
 	// cv::waitKey(0);
 }
 
 void OBJdetectsToObjs(vector<OBJdetect> objdetects, vector<Obj> &objs)
 {
 	objs.clear();
+	objs.reserve(objdetects.size());
 	Obj objbuf;
 	for (int i = 0; i < objdetects.size(); i++)
 	{
-		int j = 0;
-		for (j = 0; j < sizeof(class_name) / sizeof(*class_name); j++)
-			if (objdetects.at(i).type == class_name[j])
-				break;
-
-		objbuf.type = j;                         // Object type
+		objbuf.type = static_cast<uint8_t>(objdetects.at(i).type);     // Object type
 		objbuf.id = i;                           // Object id
 		objbuf.x = objdetects.at(i).detect.x;    // Center x of the bounding box
 		objbuf.y = objdetects.at(i).detect.y;    // Center y of the bounding box
@@ -1981,15 +2020,11 @@ void OBJdetectsToObjs(vector<OBJdetect> objdetects, vector<Obj> &objs)
 void ALObjectsToObjs(vector<ALObject> objects, vector<Obj> &objs)
 {
 	objs.clear();
+	objs.reserve(objects.size());
 	Obj objbuf;
 	for (int i = 0; i < objects.size(); i++)
 	{
-		int j = 0;
-		for (j = 0; j < sizeof(class_name) / sizeof(*class_name); j++)
-			if (objects.at(i).obj_type == class_name[j])
-				break;
-
-		objbuf.type = j;                           // Object type
+		objbuf.type = static_cast<uint8_t>(objects.at(i).obj_type);      // Object type
 		objbuf.id = objects.at(i).id;              // Object id
 		objbuf.x = objects.at(i).cluster_center.x; // Center x of the bounding box
 		objbuf.y = objects.at(i).cluster_center.y; // Center y of the bounding box
@@ -2000,12 +2035,12 @@ void ALObjectsToObjs(vector<ALObject> objects, vector<Obj> &objs)
 	}
 }
 
-void fixIDs(const vector<vector<Obj>> &objs, vector<std::pair<uint, idFix>> &fixedIds, vector<Mat> &d_images, uint framesize)
+void fixIDs(const vector<vector<Obj>> &objs, vector<std::pair<uint, IdFix>> &fixedIds, vector<Mat> &d_images, uint framesize)
 {
 	vector<ALObject> objects;
 	vector<Obj> objsbuf;
 	vector<vector<Obj>> fixedobjs;
-	idFix idfix;
+	IdFix idfix;
 
 	if (framesize > 0)
 	{
@@ -2033,7 +2068,7 @@ void fixIDs(const vector<vector<Obj>> &objs, vector<std::pair<uint, idFix>> &fix
 	{
 		for (int j = 0; j < objs.at(i).size(); j++)
 		{
-			if (objs.at(i).at(j).type != 1)
+			if (ObjClass(objs.at(i).at(j).type) != ObjClass::ANT)
 				continue;
 
 			float minr = sqrt(pow((float)objs.at(i).at(j).x - (float)fixedobjs.at(i).at(0).x * koef, 2) + pow((float)objs.at(i).at(j).y - (float)fixedobjs.at(i).at(0).y * koef, 2));
@@ -2605,11 +2640,8 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		for (int i = 0; i < detects.size(); i++)
 		{
-			if (detects.at(i).type != "a")
-			{
-				detects.erase(detects.begin() + i);
-				i--;
-			}
+			if (ObjClass(detects.at(i).type) != ObjClass::ANT)
+				detects.erase(detects.begin() + i--);
 		}
 
 		for (uint16_t i = 0; i < detects.size(); i++)
@@ -3005,7 +3037,7 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls_id], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls_id], img);
 				assert(obj.traces.empty() && "Unexpected traces");
 				obj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
 						, obj.obj_size.x, obj.obj_size.y});
@@ -3079,7 +3111,7 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls], img);
 				assert(obj.traces.empty() && "Unexpected traces");
 				obj.traces.push_back(Trace{id_frame, obj.cluster_center.x, obj.cluster_center.y
 						, obj.obj_size.x, obj.obj_size.y});
@@ -3190,7 +3222,7 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 	// std::cout << "<baseimag 1>" << endl;
 	for (int i = 0; i < objects.size(); i++)
 	{
-		string text = objects.at(i).obj_type + " ID" + to_string(objects.at(i).id);
+		string text = objClassTitle(objects.at(i).obj_type) + to_string(objects.at(i).id);
 
 		Point2f ptext;
 		ptext.x = 20;
@@ -3226,7 +3258,7 @@ Mat trackingMotV2_1(string pathmodel, torch::DeviceType device_type, Mat frame0,
 	// cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
 	//--------------</baseimag>-------------------------------
 
-	imshow("Motion", baseimag);
+	imshow("Tracking", baseimag);
 	cv::waitKey(10);
 
 	return baseimag;
@@ -3281,11 +3313,8 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 
 		for (uint16_t i = 0; i < detects.size(); i++)
 		{
-			if (detects.at(i).type != "a")
-			{
-				detects.erase(detects.begin() + i);
-				i--;
-			}
+			if (ObjClass(detects.at(i).type) != ObjClass::ANT)
+				detects.erase(detects.begin() + i--);
 		}
 
 		for (uint16_t i = 0; i < detects.size(); i++)
@@ -3654,7 +3683,7 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 					, min_u16(imagbuf.cols, clustercenter.x + objhsz * koef)));
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls_id], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls_id], img);
 				objects.push_back(obj);
 				for (size_t j = 0; j < clsobjrs.size(); j++)
 				{
@@ -3725,7 +3754,7 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 					, min_u16(imagbuf.cols, clustercenter.x + objhsz * koef)));
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls], img);
 				objects.push_back(obj);
 				clusters.erase(clusters.begin() + cls);
 				cls--;
@@ -3828,7 +3857,7 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 	Mat baseimag(rows, rows + extr * koef, CV_8UC3, Scalar(0, 0, 0));
 	for (int i = 0; i < objects.size(); i++)
 	{
-		string text = objects.at(i).obj_type + " ID" + to_string(objects.at(i).id);
+		string text = objClassTitle(objects.at(i).obj_type) + to_string(objects.at(i).id);
 
 		Point2f ptext;
 		ptext.x = 20;
@@ -3862,7 +3891,7 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(string pathmodel, t
 	cv::putText(baseimag, to_string(id_frame), p_idframe, 1, 3, Scalar(255, 255, 255), 2);
 	// cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
 	cv::resize(baseimag, baseimag, cv::Size(992 + extr, 992), cv::InterpolationFlags::INTER_CUBIC);
-	imshow("Motion", baseimag);
+	imshow("Tracking", baseimag);
 	cv::waitKey(0);
 	//--------------</baseimag>-------------------------------*/
 
@@ -4019,11 +4048,8 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		for (int i = 0; i < detects.size(); i++)
 		{
-			if (detects.at(i).type != "a")
-			{
-				detects.erase(detects.begin() + i);
-				i--;
-			}
+			if (ObjClass(detects.at(i).type) != ObjClass::ANT)
+				detects.erase(detects.begin() + i--);
 		}
 
 		for (uint16_t i = 0; i < detects.size(); i++)
@@ -4532,7 +4558,7 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls_id], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls_id], img);
 				objects.push_back(obj);
 				for (size_t j = 0; j < clsobjrs.size(); j++)
 				{
@@ -4605,7 +4631,7 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls], img);
 				objects.push_back(obj);
 				clusters.erase(clusters.begin() + cls);
 				cls--;
@@ -4714,7 +4740,7 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 	// std::cout << "<baseimag 1>" << endl;
 	for (int i = 0; i < objects.size(); i++)
 	{
-		string text = objects.at(i).obj_type + " ID" + to_string(objects.at(i).id);
+		string text = objClassTitle(objects.at(i).obj_type) + to_string(objects.at(i).id);
 
 		Point2f ptext;
 		ptext.x = 20;
@@ -4754,7 +4780,7 @@ Mat trackingMotV2_2(string pathmodel, torch::DeviceType device_type, Mat frame0,
 	// cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
 	//--------------</baseimag>-------------------------------
 
-	imshow("Motion", baseimag);
+	imshow("Tracking", baseimag);
 	cv::waitKey(0);
 
 	return baseimag;
@@ -4815,11 +4841,8 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 		for (int i = 0; i < detects.size(); i++)
 		{
-			if (detects.at(i).type != "a")
-			{
-				detects.erase(detects.begin() + i);
-				i--;
-			}
+			if (ObjClass(detects.at(i).type) != ObjClass::ANT)
+				detects.erase(detects.begin() + i--);
 		}
 
 		for (uint16_t i = 0; i < detects.size(); i++)
@@ -5295,7 +5318,7 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls_id], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls_id], img);
 				objects.push_back(obj);
 				for (size_t j = 0; j < clsobjrs.size(); j++)
 				{
@@ -5368,7 +5391,7 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 
 				cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 				img.convertTo(img, CV_8UC3);
-				ALObject obj(objects.size(), "a", clusters[cls], img);
+				ALObject obj(objects.size(), ObjClass::ANT, clusters[cls], img);
 				objects.push_back(obj);
 				clusters.erase(clusters.begin() + cls);
 				cls--;
@@ -5477,7 +5500,7 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 	// std::cout << "<baseimag 1>" << endl;
 	for (int i = 0; i < objects.size(); i++)
 	{
-		string text = objects.at(i).obj_type + " ID" + to_string(objects.at(i).id);
+		string text = objClassTitle(objects.at(i).obj_type) + to_string(objects.at(i).id);
 
 		Point2f ptext;
 		ptext.x = 20;
@@ -5517,7 +5540,7 @@ Mat trackingMotV2_3(string pathmodel, torch::DeviceType device_type, Mat frame0,
 	// cv::cvtColor(baseimag, baseimag, cv::COLOR_BGR2RGB);
 	//--------------</baseimag>-------------------------------
 
-	imshow("Motion", baseimag);
+	imshow("Tracking", baseimag);
 	cv::waitKey(10);
 
 	return baseimag;
@@ -5542,9 +5565,9 @@ void traceObjects(const vector<ALObject> &objects, const string& odir)  // , con
 	}
 
 	for(const auto& obj: objects) {
-		// cout << endl << "obj: " << obj.obj_type + to_string(obj.id) << endl;
-		cout << obj.obj_type + to_string(obj.id) << endl;
-		std::fstream fout((odp / obj.obj_type).string() + to_string(obj.id) + ".csv", std::ios_base::out);
+		// cout << endl << "obj: " << objClassTitle(obj.obj_type) + to_string(obj.id) << endl;
+		cout << objClassTitle(obj.obj_type) + to_string(obj.id) << endl;
+		std::fstream fout((odp / objClassTitle(obj.obj_type)).string() + to_string(obj.id) + ".csv", std::ios_base::out);
 		fout << "# FrameId ObjCenterX ObjCenterY ObjWidth ObjHeight\n";
 		for(const auto& tr: obj.traces) {
 			fout << tr.frame << ' ' << tr.center.x << ' ' << tr.center.y << ' ' << tr.size.width << ' ' << tr.size.height << endl;
