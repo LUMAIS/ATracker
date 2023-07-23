@@ -41,7 +41,8 @@ const char *gengetopt_args_info_help[] = {
   "\n Group: detection\n  Object detection parameters",
   "  -m, --model=filename      path to the object detector (PyTorch ML model)",
   "  -a, --ant-length=INT      expected ant length  (default=`80')",
-  "  -c, --confidence=FLOAT    confidence threshold for the calling object\n                              detector model, typically 0.25 .. 0.5 for a\n                              YOLOv5-based model  (default=`0.32')",
+  "  -c, --confidence=FLOAT    confidence threshold for the calling object\n                              detector model, typically [0.25, 0.85] for a\n                              YOLOv5-based model  (default=`0.32')",
+  "  -r, --rescale=FLOAT       extend and rescale canvas of the input frames to\n                              ensure the expected size of ants E (0, 1). NOTE:\n                              causes a computational overhead without affecting\n                              original coordinates  (default=`1')",
   "  -g, --cuda                computational device for the object detector (CUDA\n                              GPU or CPU}  (default=off)",
   "\n Group: input\n  Input data",
   "  -i, --img=filename        path to the input image",
@@ -83,6 +84,7 @@ void clear_given (struct gengetopt_args_info *args_info)
   args_info->model_given = 0 ;
   args_info->ant_length_given = 0 ;
   args_info->confidence_given = 0 ;
+  args_info->rescale_given = 0 ;
   args_info->cuda_given = 0 ;
   args_info->img_given = 0 ;
   args_info->video_given = 0 ;
@@ -106,6 +108,8 @@ void clear_args (struct gengetopt_args_info *args_info)
   args_info->ant_length_orig = NULL;
   args_info->confidence_arg = 0.32;
   args_info->confidence_orig = NULL;
+  args_info->rescale_arg = 1;
+  args_info->rescale_orig = NULL;
   args_info->cuda_flag = 0;
   args_info->img_arg = NULL;
   args_info->img_orig = NULL;
@@ -130,11 +134,12 @@ void init_args_info(struct gengetopt_args_info *args_info)
   args_info->model_help = gengetopt_args_info_help[5] ;
   args_info->ant_length_help = gengetopt_args_info_help[6] ;
   args_info->confidence_help = gengetopt_args_info_help[7] ;
-  args_info->cuda_help = gengetopt_args_info_help[8] ;
-  args_info->img_help = gengetopt_args_info_help[10] ;
-  args_info->video_help = gengetopt_args_info_help[11] ;
-  args_info->frame_start_help = gengetopt_args_info_help[12] ;
-  args_info->frame_num_help = gengetopt_args_info_help[13] ;
+  args_info->rescale_help = gengetopt_args_info_help[8] ;
+  args_info->cuda_help = gengetopt_args_info_help[9] ;
+  args_info->img_help = gengetopt_args_info_help[11] ;
+  args_info->video_help = gengetopt_args_info_help[12] ;
+  args_info->frame_start_help = gengetopt_args_info_help[13] ;
+  args_info->frame_num_help = gengetopt_args_info_help[14] ;
   
 }
 
@@ -232,6 +237,7 @@ cmdline_parser_release (struct gengetopt_args_info *args_info)
   free_string_field (&(args_info->model_orig));
   free_string_field (&(args_info->ant_length_orig));
   free_string_field (&(args_info->confidence_orig));
+  free_string_field (&(args_info->rescale_orig));
   free_string_field (&(args_info->img_arg));
   free_string_field (&(args_info->img_orig));
   free_string_field (&(args_info->video_arg));
@@ -282,6 +288,8 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "ant-length", args_info->ant_length_orig, 0);
   if (args_info->confidence_given)
     write_into_file(outfile, "confidence", args_info->confidence_orig, 0);
+  if (args_info->rescale_given)
+    write_into_file(outfile, "rescale", args_info->rescale_orig, 0);
   if (args_info->cuda_given)
     write_into_file(outfile, "cuda", 0, 0 );
   if (args_info->img_given)
@@ -453,6 +461,21 @@ if (args_info->input_group_counter == 0)
   
 
   /* checks for dependences among options */
+  if (args_info->confidence_given && ! args_info->model_given)
+    {
+      fprintf (stderr, "%s: '--confidence' ('-c') option depends on option 'model'%s\n", prog_name, (additional_error ? additional_error : ""));
+      error_occurred = 1;
+    }
+  if (args_info->rescale_given && ! args_info->model_given)
+    {
+      fprintf (stderr, "%s: '--rescale' ('-r') option depends on option 'model'%s\n", prog_name, (additional_error ? additional_error : ""));
+      error_occurred = 1;
+    }
+  if (args_info->cuda_given && ! args_info->model_given)
+    {
+      fprintf (stderr, "%s: '--cuda' ('-g') option depends on option 'model'%s\n", prog_name, (additional_error ? additional_error : ""));
+      error_occurred = 1;
+    }
   if (args_info->frame_start_given && ! args_info->video_given)
     {
       fprintf (stderr, "%s: '--frame_start' ('-s') option depends on option 'video'%s\n", prog_name, (additional_error ? additional_error : ""));
@@ -638,6 +661,7 @@ cmdline_parser_internal (
         { "model",	1, NULL, 'm' },
         { "ant-length",	1, NULL, 'a' },
         { "confidence",	1, NULL, 'c' },
+        { "rescale",	1, NULL, 'r' },
         { "cuda",	0, NULL, 'g' },
         { "img",	1, NULL, 'i' },
         { "video",	1, NULL, 'v' },
@@ -646,7 +670,7 @@ cmdline_parser_internal (
         { 0,  0, 0, 0 }
       };
 
-      c = getopt_long (argc, argv, "hVo:f:m:a:c:gi:v:s:n:", long_options, &option_index);
+      c = getopt_long (argc, argv, "hVo:f:m:a:c:r:gi:v:s:n:", long_options, &option_index);
 
       if (c == -1) break;	/* Exit from `while (1)' loop.  */
 
@@ -716,7 +740,7 @@ cmdline_parser_internal (
             goto failure;
         
           break;
-        case 'c':	/* confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model.  */
+        case 'c':	/* confidence threshold for the calling object detector model, typically [0.25, 0.85] for a YOLOv5-based model.  */
         
         
           if (update_arg( (void *)&(args_info->confidence_arg), 
@@ -724,6 +748,18 @@ cmdline_parser_internal (
               &(local_args_info.confidence_given), optarg, 0, "0.32", ARG_FLOAT,
               check_ambiguity, override, 0, 0,
               "confidence", 'c',
+              additional_error))
+            goto failure;
+        
+          break;
+        case 'r':	/* extend and rescale canvas of the input frames to ensure the expected size of ants E (0, 1). NOTE: causes a computational overhead without affecting original coordinates.  */
+        
+        
+          if (update_arg( (void *)&(args_info->rescale_arg), 
+               &(args_info->rescale_orig), &(args_info->rescale_given),
+              &(local_args_info.rescale_given), optarg, 0, "1", ARG_FLOAT,
+              check_ambiguity, override, 0, 0,
+              "rescale", 'r',
               additional_error))
             goto failure;
         

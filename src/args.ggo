@@ -32,9 +32,15 @@ groupoption  "model" m  "path to the object detector (PyTorch ML model)"
   string typestr="filename" group="detection"
 groupoption  "ant-length" a  "expected ant length"
   int default="80" group="detection"
-option  "confidence" c  "confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model"
-  float default="0.32"
-option  "cuda" g  "computational device for the object detector (CUDA GPU or CPU}" flag off
+option  "confidence" c  "confidence threshold for the calling object detector model,\
+ typically [0.25, 0.85] for a YOLOv5-based model"
+  float default="0.32" dependon="model"
+option  "rescale" r  "extend and rescale canvas of the input frames to ensure the\
+ expected size of ants E (0, 1). NOTE: causes a computational overhead without\
+ affecting original coordinates"
+  float default="1" dependon="model"
+option  "cuda" g  "computational device for the object detector (CUDA GPU or CPU}"
+ flag off dependon="model"
 
 defgroup  "input" groupdesc="Input data" required
 groupoption  "img" i  "path to the input image" group="input"

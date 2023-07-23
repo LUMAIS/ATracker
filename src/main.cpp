@@ -26,6 +26,18 @@ struct ArgParser: gengetopt_args_info {
 	}
 };
 
+// Rescale canvas of the frames
+void rescaleCanvas(cv::Mat& frame, float scale)
+{
+	if(scale <= 0 || scale >= 1) {
+		assert(scale > 0 && scale < 1 && "Unexpected size of the canvas scale parameter");
+		return;
+	}
+	Mat tmp = cv::Mat::zeros(roundf(frame.rows/scale), roundf(frame.cols/scale), frame.type());
+	frame.copyTo(tmp(cv::Rect(0, 0, frame.cols, frame.rows)));
+	frame = tmp;
+}
+
 int main(int argc, char **argv)
 {
 	// testtorch();
@@ -43,6 +55,7 @@ int main(int argc, char **argv)
 	//     cout << "argc: " << argc << endl;
 	//     return 0;
 	// }
+	// torch::DeviceType device=torch::kCPU, kCUDA
 
 	ArgParser  args_info(argc, argv);
 
@@ -66,7 +79,7 @@ int main(int argc, char **argv)
 		}
 	} else {
 		assert(args_info.ant_length_given && "ant_length should be provided when an ML-based detector is not applied");
-		objhsz = args_info.ant_length_arg;
+		objhsz = args_info.ant_length_arg / 2 + 1;
 	}
 
 	torch::DeviceType device_type = torch::kCPU;
@@ -94,22 +107,30 @@ int main(int argc, char **argv)
 
 		const float confidence = args_info.confidence_arg;  // dftConf
 		string filename = (fs::path(args_info.output_arg) / fs::path(args_info.video_arg).stem()).string()
-			+ "_" + to_string(start) + "-" + to_string(nfram) + "_c" + to_string(confidence).substr(0, 4);  // + dateTime();
+			+ "_" + to_string(start) + "-" + to_string(nfram) + (args_info.model_given
+				? "_c" + to_string(confidence).substr(0, 4) : "_a" + to_string(args_info.ant_length_arg));  // + dateTime();
+		if(args_info.rescale_arg < 1)
+			filename += string("_") + to_string(args_info.rescale_arg).substr(0, 4);
 		if(args_info.fout_suffix_given)
-			filename += string(" ") + args_info.fout_suffix_arg;
+			filename += string("_") + args_info.fout_suffix_arg;
 
 		const double fps = 1.0;  // FPS of the forming video
-		cv::Mat frame;
+		cv::Mat framePrev = d_images.at(0), frame;  // = d_images.at(1);
 
 		// cv::Size sizeFrame(992+extr,992);
 		// cv::Mat testimg = std::get<2>(detectORB(d_images.at(0), d_images.at(1), 2.5));
 
 		auto millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+		// Initial call is required to initialize motion processing
 		// trackingMotV2_1  - Detector + motion
 		// trackingMotV2_2  - Interactive ORB descriptors for the whole frame
 		// trackingMotV2_3  - Detector + ORB descriptors for the whole frame
-		cv::Mat testimg = trackingMotV2_1(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
-		// cv::Mat testimg = trackingMotV2_3(pathmodel, device_type, d_images.at(0), d_images.at(1), objects, 0, args_info.model_given, confidence);
+		if(args_info.rescale_arg < 1) {
+			rescaleCanvas(framePrev, args_info.rescale_arg);
+			// rescaleCanvas(frame, args_info.rescale_arg);
+		}
+		cv::Mat testimg = trackingMotV2_1(pathmodel, device_type, framePrev, framePrev, objects, start, confidence, filename);
+		// cv::Mat testimg = trackingMotV2_3(pathmodel, device_type, framePrev, framePrev, objects, start, confidence);
 		std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
 			// << "ms; " << "confidence threshold : " << confidence
 			<< " ms" << endl;
@@ -123,12 +144,18 @@ int main(int argc, char **argv)
 		{
 			cout << "[Frame: " << start + i << "]" << endl;
 			millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-			writer.write(trackingMotV2_1(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
+			framePrev = d_images.at(i);
+			frame = d_images.at(i + 1);
+			if(args_info.rescale_arg < 1) {
+				rescaleCanvas(framePrev, args_info.rescale_arg);
+				rescaleCanvas(frame, args_info.rescale_arg);
+			}
+			writer.write(trackingMotV2_1(pathmodel, device_type, framePrev, frame, objects, start + i, confidence));
 			std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
 				// << "ms; " << "confidence threshold : " << confidence
 				<< " ms" << endl;
-			// trackingMotV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence);
-			// writer.write(trackingMotV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, args_info.model_given, confidence));
+			// trackingMotV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, confidence);
+			// writer.write(trackingMotV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, confidence));
 			// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
 		}
 		writer.release();
@@ -152,8 +179,8 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		cv::Mat imageBGR = cv::imread(args_info.img_arg, cv::ImreadModes::IMREAD_COLOR);  // argv[2]
-		detectorV4(pathmodel, imageBGR, device_type);
+		cv::Mat img = cv::imread(args_info.img_arg);  // , cv::ImreadModes::IMREAD_COLOR
+		detectorV4(pathmodel, img, device_type);
 	}
 
 	return 0;

@@ -51,9 +51,12 @@ struct gengetopt_args_info
   int ant_length_arg;	/**< @brief expected ant length (default='80').  */
   char * ant_length_orig;	/**< @brief expected ant length original value given at command line.  */
   const char *ant_length_help; /**< @brief expected ant length help description.  */
-  float confidence_arg;	/**< @brief confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model (default='0.32').  */
-  char * confidence_orig;	/**< @brief confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model original value given at command line.  */
-  const char *confidence_help; /**< @brief confidence threshold for the calling object detector model, typically 0.25 .. 0.5 for a YOLOv5-based model help description.  */
+  float confidence_arg;	/**< @brief confidence threshold for the calling object detector model, typically [0.25, 0.85] for a YOLOv5-based model (default='0.32').  */
+  char * confidence_orig;	/**< @brief confidence threshold for the calling object detector model, typically [0.25, 0.85] for a YOLOv5-based model original value given at command line.  */
+  const char *confidence_help; /**< @brief confidence threshold for the calling object detector model, typically [0.25, 0.85] for a YOLOv5-based model help description.  */
+  float rescale_arg;	/**< @brief extend and rescale canvas of the input frames to ensure the expected size of ants E (0, 1). NOTE: causes a computational overhead without affecting original coordinates (default='1').  */
+  char * rescale_orig;	/**< @brief extend and rescale canvas of the input frames to ensure the expected size of ants E (0, 1). NOTE: causes a computational overhead without affecting original coordinates original value given at command line.  */
+  const char *rescale_help; /**< @brief extend and rescale canvas of the input frames to ensure the expected size of ants E (0, 1). NOTE: causes a computational overhead without affecting original coordinates help description.  */
   int cuda_flag;	/**< @brief computational device for the object detector (CUDA GPU or CPU} (default=off).  */
   const char *cuda_help; /**< @brief computational device for the object detector (CUDA GPU or CPU} help description.  */
   char * img_arg;	/**< @brief path to the input image.  */
@@ -76,6 +79,7 @@ struct gengetopt_args_info
   unsigned int model_given ;	/**< @brief Whether model was given.  */
   unsigned int ant_length_given ;	/**< @brief Whether ant-length was given.  */
   unsigned int confidence_given ;	/**< @brief Whether confidence was given.  */
+  unsigned int rescale_given ;	/**< @brief Whether rescale was given.  */
   unsigned int cuda_given ;	/**< @brief Whether cuda was given.  */
   unsigned int img_given ;	/**< @brief Whether img was given.  */
   unsigned int video_given ;	/**< @brief Whether video was given.  */
