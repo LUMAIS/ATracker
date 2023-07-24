@@ -264,7 +264,7 @@ vector<OBJdetect> detectorV4(const string& pathmodel, Mat frame, torch::DeviceTy
 	return obj_detects;
 }
 
-void fixIDs(const vector<vector<Obj>> &objs, vector<std::pair<uint, IdFix>> &fixedIds, vector<Mat> &d_images, float confidence, uint16_t framesize, const string& pathmodel, torch::DeviceType device)
+void fixIds(const vector<vector<Obj>> &objs, vector<std::pair<uint, IdFix>> &fixedIds, vector<Mat> &d_images, float confidence, uint16_t framesize, const string& pathmodel, torch::DeviceType device)
 {
 	if(d_images.empty())
 		return;
@@ -297,7 +297,70 @@ void fixIDs(const vector<vector<Obj>> &objs, vector<std::pair<uint, IdFix>> &fix
 		ALObjectsToObjs(objects, objsbuf);
 		fixedobjs.push_back(objsbuf);
 	}
+	
+	assert(fixedobjs.size() == objs.size() && "The number of the fixed objects should match the number of input objects");
+	for (int i = 0; i < objs.size(); i++)
+	{
+		const auto& oi = objs[i];
+		auto& fxo = fixedobjs.at(i);
+		for (int j = 0; j < oi.size(); j++)
+		{
+			if (ObjClass(oi.at(j).type) != ObjClass::ANT)
+				continue;
 
+			const auto& oij = oi[j];
+			float minr = sqrt(pow((float)oij.x - (float)fxo.at(0).x * koef, 2) + pow((float)oij.y - (float)fxo.at(0).y * koef, 2));
+			int ind = 0;
+
+			for (int iobj = 0; iobj < fxo.size(); iobj++)
+			{
+				float r = sqrt(pow((float)oij.x - (float)fxo.at(iobj).x * koef, 2) + pow((float)oij.y - (float)fxo.at(iobj).y * koef, 2));
+				if (r < minr)
+				{
+					minr = r;
+					ind = iobj;
+				}
+			}
+
+			if (minr < maxr && oij.id != fxo.at(ind).id)
+			{
+				idfix.id = fxo.at(ind).id;
+				idfix.idOld = oij.id;
+				idfix.type = oij.type; // not fixed
+				fixedIds.push_back(std::make_pair((uint)i, idfix));
+				fxo.erase(fxo.begin() + ind);
+			}
+		}
+	}
+}
+
+void fixIds(const vector<vector<Obj>> &objs, vector<std::pair<uint, IdFix>> &fixedIds, Mat frame0, Mat frame, size_t ifr, float confidence, uint16_t framesize, const string& pathmodel, torch::DeviceType device)
+{
+	vector<ALObject> objects;
+	vector<Obj> objsbuf;
+	vector<vector<Obj>> fixedobjs;
+	IdFix idfix;
+
+	bool difr = frame0.data != frame.data;  // The frames are distinct
+	if (framesize > 0)
+	{
+		frame0 = frame_resizing(frame0, framesize);
+		if(difr)
+			frame = frame_resizing(frame, framesize);
+		else frame = frame0;
+	}
+
+	float koef = (float)frame0.rows / (float)resolution;
+	const float maxr = 17.0 * koef; // set depending on the size of the ant
+
+	fixedIds.clear();
+
+	// trackingMotV2b(d_images.at(1), d_images.at(0), objects, 0);
+	trackingMotV2_1(pathmodel, device, frame0, frame, objects, ifr, confidence);
+	ALObjectsToObjs(objects, objsbuf);
+	fixedobjs.push_back(objsbuf);
+
+	assert(fixedobjs.size() == objs.size() && "The number of the fixed objects should match the number of input objects");
 	for (int i = 0; i < objs.size(); i++)
 	{
 		const auto& oi = objs[i];

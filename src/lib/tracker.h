@@ -62,7 +62,33 @@ struct IdFix {
 };
 struct Obj;
 
-void fixIDs(const vector<vector<Obj>>&objs, vector<std::pair<uint,IdFix>>&fixedIds, vector<Mat> &d_images, float confidence=dftConf, uint16_t framesize=model_resolution, const string& pathmodel="", torch::DeviceType device=torch::kCPU);
+// TODO: reimplement fixIds() to probalistically fix IDs without using an object detector.
+
+//! @brief Fix object IDs for a set of frames
+//! @pre object detection used in fixIds is expected to yield exactly the same number of objects on each frame as given by the user in objs
+//!
+//! @param[in, out] objs  - input and resulting objects fo all input frames
+//! @param[out] fixedIds  - fixed ids for each object
+//! @param d_images  - processing frames
+//! @param confidence  - target confidence
+//! @param framesize  - target frame size, which should be equal to the ML model resolution
+//! @param pathmodel  - path to the object detector (ML model)
+//! @param device  - target device 
+void fixIds(const vector<vector<Obj>>&objs, vector<std::pair<uint,IdFix>>&fixedIds, vector<Mat> &d_images, float confidence=dftConf, uint16_t framesize=model_resolution, const string& pathmodel="", torch::DeviceType device=torch::kCPU);
+
+//! @brief Fix object IDs for a pair of frames
+//! @pre object detection used in fixIds is expected to yield exactly the same number of objects on each frame as given by the user in objs
+//!
+//! @param[in, out] objs  - input and resulting objects for the specified pair of frames
+//! @param[out] fixedIds  - fixed ids for each object
+//! @param frame0  - first frame
+//! @param frame  - second frame or the first frame when the initialization is performed
+//! @param ifr  - frame index for the first frame starting from 0: frame0, frame0, 0 to perform the initialization
+//! @param confidence  - target confidence
+//! @param framesize  - target frame size, which should be equal to the ML model resolution
+//! @param pathmodel  - path to the object detector (ML model)
+//! @param device  - target device 
+void fixIds(const vector<vector<Obj>>&objs, vector<std::pair<uint,IdFix>>&fixedIds, Mat frame0, Mat frame, size_t ifr, float confidence=dftConf, uint16_t framesize=model_resolution, const string& pathmodel="", torch::DeviceType device=torch::kCPU);
 
 vector<std::pair<Point2f,uint16_t>> trackingMotV2_1_artemis(const string& pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t frameId, float confidence=dftConf);
 Mat trackingMotV2_1(const string& pathmodel, torch::DeviceType device_type, Mat frame0, Mat frame, vector<ALObject> &objects, size_t frameId, float confidence=dftConf, const string& outfileBase="");
@@ -75,7 +101,7 @@ Mat trackingMotV2_3(const string& pathmodel, torch::DeviceType device_type, Mat 
 // Accessory utils -------------------------------------------------------------------------------------------
 void OBJdetectsToObjs(vector<OBJdetect> objdetects, vector<Obj> &objs);
 
-/**
+/*!
  * @brief Trace objects into CSV files
  * 
  * @param objects  objects to be traced

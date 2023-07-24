@@ -175,8 +175,8 @@ int main(int argc, char **argv)
 		writer.release();
 		traceObjects(objects, filename);
 		return 0;
-		//---TEST---*/
 
+		// Test Id fixing
 		d_images = LoadVideo(argv[2], start, nfram);
 
 		vector<OBJdetect> obj_detects;
@@ -189,7 +189,12 @@ int main(int argc, char **argv)
 			objs.push_back(objbuf);
 		}
 
-		fixIDs(objs, fixedIds, d_images);
+		fixIds(objs, fixedIds, d_images);
+
+		// // Pairwise application
+		// fixIds(objs, fixedIds, frames[0], frames[0], 0);
+		// for (int i = 0; i < frames.size() - 1; i++)
+		// 	fixIds(objs, fixedIds, frames[i], frames[i + 1], i + 1);
 	}
 	else
 	{
