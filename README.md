@@ -4,7 +4,7 @@ The application should be cross-platform, however, it has be validated only on L
 
 Authors:  (c) Artem Lutov &lt;&#108;&#97;v&commat;lumais&#46;&#99;om&gt;, Serhii Oleksenko &lt;serhii&commat;lumais&#46;&#99;om&gt;  
 License: [Apache License, Version 2](www.apache.org/licenses/LICENSE-2.0.html)  
-Organizations: [UNIFR](https://www.unifr.ch), [Lutov Analytics](https://lutan.ch), [LUMAIS](http://lumais.com)
+Organizations: [Lutov Analytics](https://lutan.ch), [LUMAIS](http://lumais.com)
 
 __Table of Contents__
 - [Installation and Prerequisites](#installation-and-prerequisites)

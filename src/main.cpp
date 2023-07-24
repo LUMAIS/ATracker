@@ -3,7 +3,8 @@
 #include <ctime>
 #include <unistd.h>
 #include <torch/script.h> // One-stop header.
-#include "lib/tracker.hpp"
+#include "lib/tracker.h"
+#include "lib/utils.h"
 #include "autogen/cmdline.h"
 
 using std::cout;
