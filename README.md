@@ -2,6 +2,10 @@
 Ant event detector and tracker, involving YOLO-based detection and several tracking techniques.  
 The application should be cross-platform, however, it has be validated only on Linux Ubuntu 20.04 LTS / Debian.
 
+Authors:  (c) Artem Lutov &lt;&#108;&#97;v&commat;lumais&#46;&#99;om&gt;, Serhii Oleksenko &lt;serhii&commat;lumais&#46;&#99;om&gt;  
+License: [Apache License, Version 2](www.apache.org/licenses/LICENSE-2.0.html)  
+Organizations: [UNIFR](https://www.unifr.ch), [Lutov Analytics](https://lutan.ch), [LUMAIS](http://lumais.com)
+
 __Table of Contents__
 - [Installation and Prerequisites](#installation-and-prerequisites)
 - [Usage](#usage)
@@ -84,8 +88,26 @@ purposes before integrating selected functionality into LAFFTrack/artemis.
   -n, --frame_num=INT       the number of frames  (default=`-1')
 ```
 
-Execution examples:
+Execution example:
 ```sh
-build/bin$ ./atracker -m data/models/AntED_yolo5_traced_992.pt -v data/video/NontaggedAnts/6.mp4 -o runs -n 8
+build/bin$ ./atracker -m data/models/AntED_yolo5_traced_992.pt -v data/video/NontaggedAnts/6.mp4 -o runs -n 5
 ```
-Executes the specified _YOLO5 ant detector_ model on _8 first frames_ of the __6.mp4__ input file, tracking those ants (recovering their ids between frames) and outputs results to the __runs__ directory, automatically adding a _suffix_ to the resulting files. The suffix includes execution parameters and the git version hash of the sources.
+Executes the specified _YOLO5 ant detector_ model on _5 first frames_ of the __6.mp4__ input file, tracking those ants (recovering their ids between frames) and outputs results to the __runs__ directory, automatically adding a _suffix_ to the resulting files. The suffix includes execution parameters and the git version hash of the sources.
+```sh
+build/bin$ du -sh runs/*
+208K	runs/6_i0-5_c0.32_f1f86fb+
+84K	runs/6_i0-5_c0.32_f1f86fb+_0.jpg
+120K	runs/6_i0-5_c0.32_f1f86fb+_demo.mp4
+
+build/bin$ git rev-parse --short HEAD
+f1f86fb
+
+$ ll -sh
+total 6.4M
+4.0K drwxrwxr-x 4 lav lav 4.0K Jul 24 15:09 ./
+4.0K drwxrwxr-x 6 lav lav 4.0K Jul 24 14:50 ../
+6.4M -rwxrwxr-x 1 lav lav 6.4M Jul 24 15:09 atracker*
+   0 lrwxrwxrwx 1 lav lav   58 Jul 24 14:50 data -> ../../data/
+4.0K drwxrwxr-x 2 lav lav 4.0K Jul 24 15:09 lib/
+4.0K drwxrwxr-x 3 lav lav 4.0K Jul 24 15:15 runs/
+```
