@@ -105,14 +105,26 @@ int main(int argc, char **argv)
 		cv::VideoWriter writer;
 		int codec = cv::VideoWriter::fourcc('m', 'p', '4', 'v');  // 'm', 'p', '4', 'v';  'h', '2', '6', '4'
 
+		// Ensure that output dir exists
+		const fs::path  odp = args_info.output_arg;
+		std::error_code  ec;
+		if(!fs::exists(odp, ec)) {
+			if(ec || !fs::create_directories(odp, ec))
+				throw std::runtime_error("The output directory can't be created (" + to_string(ec.value()) + ": " + ec.message() + "): " + odp.string() + "\n");
+		}
+
 		const float confidence = args_info.confidence_arg;  // dftConf
 		string filename = (fs::path(args_info.output_arg) / fs::path(args_info.video_arg).stem()).string()
-			+ "_" + to_string(start) + "-" + to_string(nfram) + (args_info.model_given
+			+ "_i" + to_string(start) + "-" + to_string(nfram) + (args_info.model_given
 				? "_c" + to_string(confidence).substr(0, 4) : "_a" + to_string(args_info.ant_length_arg));  // + dateTime();
 		if(args_info.rescale_arg < 1)
-			filename += string("_") + to_string(args_info.rescale_arg).substr(0, 4);
+			filename += string("_r") + to_string(args_info.rescale_arg).substr(0, 4);
 		if(args_info.fout_suffix_given)
 			filename += string("_") + args_info.fout_suffix_arg;
+// GIT_SRC_VERSION (a custom macro definition) might be defined by CMAKE or another build tool
+#ifdef GIT_SRC_VERSION
+		filename += string("_") + GIT_SRC_VERSION;
+#endif // GIT_SRC_VERSION
 
 		const double fps = 1.0;  // FPS of the forming video
 		cv::Mat framePrev = d_images.at(0), frame;  // = d_images.at(1);
@@ -150,7 +162,8 @@ int main(int argc, char **argv)
 				rescaleCanvas(framePrev, args_info.rescale_arg);
 				rescaleCanvas(frame, args_info.rescale_arg);
 			}
-			writer.write(trackingMotV2_1(pathmodel, device_type, framePrev, frame, objects, start + i, confidence));
+			cv::Mat res = trackingMotV2_1(pathmodel, device_type, framePrev, frame, objects, start + i, confidence);
+			writer.write(res);
 			std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
 				// << "ms; " << "confidence threshold : " << confidence
 				<< " ms" << endl;

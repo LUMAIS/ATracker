@@ -1,8 +1,8 @@
 # Configuration file for the automatic generation of the input options parsing
 
 package "atracker"
-version "1.0.0"
-versiontext "Author:  (c) Serhii Oleksenko <serhii@lumais.com>, Artem Lutov <lav@lumais.com>
+version "1.0.1"
+versiontext "Author:  (c) Artem Lutov <lav@lumais.com>, Serhii Oleksenko <serhii@lumais.com>
 Sources:  https://github.com/LUMAIS/atracker
 "
 

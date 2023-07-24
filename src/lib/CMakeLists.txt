@@ -1,6 +1,9 @@
-message("Built tracker lib")
+message("Buiding tracker lib")
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)  # Debug , Release , RelWithDebInfo
+# if(NOT ${CMAKE_BUILD_TYPE})
+# set(CMAKE_BUILD_TYPE RelWithDebInfo)  # Debug , Release , RelWithDebInfo
+# endif()
+set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE INTERNAL "CMake build type")
 
 # set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # find_path(ONNX_RUNTIME_SESSION_INCLUDE_DIRS onnxruntime_cxx_api.h onnxruntime-linux-x64-1.8.1/include)

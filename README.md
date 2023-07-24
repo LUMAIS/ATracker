@@ -2,7 +2,11 @@
 Ant event detector and tracker, involving YOLO-based detection and several tracking techniques.  
 The application should be cross-platform, however, it has be validated only on Linux Ubuntu 20.04 LTS / Debian.
 
-# Installation and Prerequisites
+__Table of Contents__
+- [Installation and Prerequisites](#installation-and-prerequisites)
+- [Usage](#usage)
+
+## Installation and Prerequisites
 ATracker depends on Torch (libtorch with C++11 ABI) and OpenCV.
 
 Torch installation (latest stable version of LibTorch C++) is provided on https://pytorch.org/get-started/locally/, see https://pytorch.org/TensorRT/tutorials/installation.html for details.
@@ -31,3 +35,57 @@ $ mkdir build && cd build && \
   cmake -DCMAKE_CUDA_ARCHITECTURES=all -DCUDAToolkit_ROOT=/usr/local/cuda -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DOpenCV_DIR=/opt/xdk/opencv/build -DTORCH_INSTALL_PREFIX=/opt/xdk/libtorch-cxx11-gpu -DTorch_DIR=/opt/xdk/libtorch-cxx11-gpu/share/cmake/Torch .. && \
   cmake --build . --config Release -j 4
 ```
+
+## Usage
+
+```sh
+build/bin$ ./atracker -h
+
+Usage: atracker [OPTIONS]
+
+Examples:
+  $ ./atracker -m data/AntED_yolo5_traced_992.pt -v data/3.mp4 -s 1 -n 8
+  $ ./atracker data/Cflo_troph_count_3-38_3-52.mp4 -n 32
+
+Basic ant tracker (former AntDetect), whose stable functionality is integrated
+into LAFFTrack/artemis
+
+Basic ant tracker, which uses YOLO-based ant events detector and several
+tracking techniques to track ant-related objects (e.g., ant, larva, pupa) and
+their interaction events (e.g., trophallaxis).
+NOTE: this application is used mainly for internal evaluation and valudation
+purposes before integrating selected functionality into LAFFTrack/artemis.
+
+
+  -h, --help                Print help and exit
+  -V, --version             Print version and exit
+  -o, --output=filename     output directory  (default=`.')
+  -f, --fout_suffix=STRING  additional suffix for the resulting output files
+
+ Group: detection
+  Object detection parameters
+  -m, --model=filename      path to the object detector (PyTorch ML model)
+  -a, --ant-length=INT      expected ant length  (default=`80')
+  -c, --confidence=FLOAT    confidence threshold for the calling object
+                              detector model, typically [0.25, 0.85] for a
+                              YOLOv5-based model  (default=`0.32')
+  -r, --rescale=FLOAT       extend and rescale canvas of the input frames to
+                              ensure the expected size of ants E (0, 1). NOTE:
+                              causes a computational overhead without affecting
+                              original coordinates  (default=`1')
+  -g, --cuda                computational device for the object detector (CUDA
+                              GPU or CPU}  (default=off)
+
+ Group: input
+  Input data
+  -i, --img=filename        path to the input image
+  -v, --video=filename      path to the input video
+  -s, --frame_start=INT     start frame index  (default=`0')
+  -n, --frame_num=INT       the number of frames  (default=`-1')
+```
+
+Execution examples:
+```sh
+build/bin$ ./atracker -m data/models/AntED_yolo5_traced_992.pt -v data/video/NontaggedAnts/6.mp4 -o runs -n 8
+```
+Executes the specified _YOLO5 ant detector_ model on _8 first frames_ of the __6.mp4__ input file, tracking those ants (recovering their ids between frames) and outputs results to the __runs__ directory, automatically adding a _suffix_ to the resulting files. The suffix includes execution parameters and the git version hash of the sources.

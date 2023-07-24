@@ -3285,6 +3285,12 @@ Mat trackingMotV2_1(const string& pathmodel, torch::DeviceType device_type, Mat 
 		}
 	}
 	// std::cout << "<baseimag 2>" << endl;
+	if(baseimag.type() != imag.type())
+		for(auto* fr: {&baseimag, &imag})
+			if(fr->channels() == 1) {
+				cv::cvtColor(*fr, *fr, cv::COLOR_GRAY2BGR);
+				break;
+			}
 	imag.copyTo(baseimag(cv::Rect(extr, 0, imag.cols, imag.rows)));
 
 	Point2f p_idframe;
@@ -3939,6 +3945,12 @@ vector<std::pair<Point2f, uint16_t>> trackingMotV2_1_artemis(const string& pathm
 			oi.img.copyTo(baseimag(cv::Rect(pt1.x + 1, pt1.y + 1, oi.img.cols, oi.img.rows)));
 		}
 	}
+	if(baseimag.type() != imag.type())
+		for(auto* fr: {&baseimag, &imag})
+			if(fr->channels() == 1) {
+				cv::cvtColor(*fr, *fr, cv::COLOR_GRAY2BGR);
+				break;
+			}
 	imag.copyTo(baseimag(cv::Rect(extr * koef, 0, imag.cols, imag.rows)));
 
 	Point2f p_idframe;
@@ -4818,11 +4830,18 @@ Mat trackingMotV2_2(const string& pathmodel, torch::DeviceType device_type, Mat 
 		}
 	}
 	// std::cout << "<baseimag 2>" << endl;
+	Mat& imgOrb = std::get<2>(detectsORB);
+	if(baseimag.type() != imag.type())
+		for(auto* fr: {&baseimag, &imag, &imgOrb})
+			if(fr->channels() == 1) {
+				cv::cvtColor(*fr, *fr, cv::COLOR_GRAY2BGR);
+				break;
+			}
 	imag.copyTo(baseimag(cv::Rect(extr, 0, imag.cols, imag.rows)));
 
-	cv::resize(std::get<2>(detectsORB), std::get<2>(detectsORB), cv::Size(2 * resolution, resolution), cv::InterpolationFlags::INTER_CUBIC);
+	cv::resize(imgOrb, imgOrb, cv::Size(2 * resolution, resolution), cv::InterpolationFlags::INTER_CUBIC);
 
-	std::get<2>(detectsORB).copyTo(baseimag(cv::Rect(resolution + extr, 0, std::get<2>(detectsORB).cols, std::get<2>(detectsORB).rows)));
+	imgOrb.copyTo(baseimag(cv::Rect(resolution + extr, 0, imgOrb.cols, imgOrb.rows)));
 
 	Point2f p_idframe;
 	p_idframe.x = resolution + extr - 95;
@@ -5568,6 +5587,12 @@ Mat trackingMotV2_3(const string& pathmodel, torch::DeviceType device_type, Mat 
 		}
 	}
 	// std::cout << "<baseimag 2>" << endl;
+	if(baseimag.type() != imag.type())
+		for(auto* fr: {&baseimag, &imag})
+			if(fr->channels() == 1) {
+				cv::cvtColor(*fr, *fr, cv::COLOR_GRAY2BGR);
+				break;
+			}
 	imag.copyTo(baseimag(cv::Rect(extr, 0, imag.cols, imag.rows)));
 
 	//cv::resize(std::get<2>(detectsORB), std::get<2>(detectsORB), cv::Size(2 * resolution, resolution), cv::InterpolationFlags::INTER_CUBIC);

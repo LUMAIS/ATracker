@@ -29,7 +29,7 @@ const char *gengetopt_args_info_purpose = "Basic ant tracker (former AntDetect),
 
 const char *gengetopt_args_info_usage = "Usage: atracker [OPTIONS]\n\nExamples:\n  $ ./atracker -m data/AntED_yolo5_traced_992.pt -v data/3.mp4 -s 1 -n 8\n  $ ./atracker data/Cflo_troph_count_3-38_3-52.mp4 -n 32\n";
 
-const char *gengetopt_args_info_versiontext = "Author:  (c) Serhii Oleksenko <serhii@lumais.com>, Artem Lutov <lav@lumais.com>\nSources:  https://github.com/LUMAIS/atracker\n";
+const char *gengetopt_args_info_versiontext = "Author:  (c) Artem Lutov <lav@lumais.com>, Serhii Oleksenko <serhii@lumais.com>\nSources:  https://github.com/LUMAIS/atracker\n";
 
 const char *gengetopt_args_info_description = "Basic ant tracker, which uses YOLO-based ant events detector and several\ntracking techniques to track ant-related objects (e.g., ant, larva, pupa) and\ntheir interaction events (e.g., trophallaxis).\nNOTE: this application is used mainly for internal evaluation and valudation\npurposes before integrating selected functionality into LAFFTrack/artemis.\n";
 
