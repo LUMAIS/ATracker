@@ -4,7 +4,7 @@ The application should be cross-platform, however, it has be validated only on L
 
 Authors:  (c) Artem Lutov &lt;&#108;&#97;v&commat;lumais&#46;&#99;om&gt;, Serhii Oleksenko &lt;serhii&commat;lumais&#46;&#99;om&gt;  
 License: [Apache License, Version 2](www.apache.org/licenses/LICENSE-2.0.html)  
-Organizations: [Lutov Analytics](https://lutan.ch), [LUMAIS](http://lumais.com)
+Organizations: [LUMAIS](http://lumais.com), [Lutov Analytics](https://lutan.ch)
 
 __Table of Contents__
 - [Installation and Prerequisites](#installation-and-prerequisites)
@@ -93,6 +93,9 @@ Execution example:
 build/bin$ ./atracker -m data/models/AntED_yolo5_traced_992.pt -v data/video/NontaggedAnts/6.mp4 -o runs -n 5
 ```
 Executes the specified _YOLO5 ant detector_ model on _5 first frames_ of the __6.mp4__ input file, tracking those ants (recovering their ids between frames) and outputs results to the __runs__ directory, automatically adding a _suffix_ to the resulting files. The suffix includes execution parameters and the git version hash of the sources.
+
+![ATracker](img/ATracker.jpg)
+
 ```sh
 build/bin$ du -sh runs/*
 208K	runs/6_i0-5_c0.32_f1f86fb+

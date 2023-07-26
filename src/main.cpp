@@ -99,10 +99,11 @@ int main(int argc, char **argv)
 
 		vector<vector<Obj>> objs;
 		vector<std::pair<uint, IdFix>> fixedIds;
-		vector<cv::Mat> d_images;
 
 		//---TEST---
-		d_images = LoadVideo(args_info.video_arg, start, nfram);  // argv[2], start, nfram
+		// vector<cv::Mat> d_images;
+		// d_images = LoadVideo(args_info.video_arg, start, nfram);  // argv[2], start, nfram
+
 		cv::VideoWriter writer;
 		int codec = cv::VideoWriter::fourcc('m', 'p', '4', 'v');  // 'm', 'p', '4', 'v';  'h', '2', '6', '4'
 
@@ -128,55 +129,116 @@ int main(int argc, char **argv)
 #endif // GIT_SRC_VERSION
 
 		const double fps = 1.0;  // FPS of the forming video
-		cv::Mat framePrev = d_images.at(0), frame;  // = d_images.at(1);
 
-		// cv::Size sizeFrame(992+extr,992);
-		// cv::Mat testimg = std::get<2>(detectORB(d_images.at(0), d_images.at(1), 2.5));
-
-		auto millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-		// Initial call is required to initialize motion processing
-		// trackingMotV2_1  - Detector + motion
-		// trackingMotV2_2  - Interactive ORB descriptors for the whole frame
-		// trackingMotV2_3  - Detector + ORB descriptors for the whole frame
-		if(args_info.rescale_arg < 1) {
-			rescaleCanvas(framePrev, args_info.rescale_arg);
-			// rescaleCanvas(frame, args_info.rescale_arg);
+		// Capture video in the streaming mode
+		cv::VideoCapture cap(args_info.video_arg);
+		if (!cap.isOpened()) {
+			std::cout << "Cannot open the video file" << endl;
+			return 1;
 		}
-		cv::Mat testimg = trackingMotV2_1(pathmodel, device_type, framePrev, framePrev, objects, start, confidence, filename);
-		// cv::Mat testimg = trackingMotV2_3(pathmodel, device_type, framePrev, framePrev, objects, start, confidence);
-		std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
-			// << "ms; " << "confidence threshold : " << confidence
-			<< " ms" << endl;
+		Mat framebuf;
+		cap.set(cv::CAP_PROP_POS_FRAMES, start);
 
-		cv::Size sizeFrame(testimg.cols, testimg.rows);
-
-		writer.open(filename + "_demo.mp4", codec, fps, sizeFrame, true);
 		vector<ALObject> objects;
-
-		for (int i = 0; i < d_images.size() - 1; i++)
-		{
-			cout << "[Frame: " << start + i << "]" << endl;
-			millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-			framePrev = d_images.at(i);
-			frame = d_images.at(i + 1);
-			if(args_info.rescale_arg < 1) {
-				rescaleCanvas(framePrev, args_info.rescale_arg);
-				rescaleCanvas(frame, args_info.rescale_arg);
+		bool initOutp = true;
+		const size_t  framesNum = cap.get(cv::CAP_PROP_FRAME_COUNT);
+		cv::Mat framePrev, frame;  // = d_images.at(1);
+		for (size_t ifr = 0; ifr < framesNum; ifr++) {
+			if (ifr > nfram) {
+				std::cout << "nfram:  " << nfram << endl;
+				break;
 			}
-			cv::Mat res = trackingMotV2_1(pathmodel, device_type, framePrev, frame, objects, start + i, confidence);
-			writer.write(res);
-			std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
-				// << "ms; " << "confidence threshold : " << confidence
-				<< " ms" << endl;
-			// trackingMotV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, confidence);
-			// writer.write(trackingMotV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, confidence));
-			// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
+
+			if (!cap.read(framebuf)) {
+				std::cout << "Failed to extract the frame " << ifr << endl;
+			} else {
+				// Mat frame;
+				// cv::cvtColor(framebuf, frame, cv::COLOR_RGB2GRAY);
+				// cv::cvtColor(framebuf, framebuf, cv::COLOR_RGB2GRAY);
+
+				// if(framebuf.channels() == 1)
+				// 	cv::cvtColor(framebuf, framebuf, cv::COLOR_GRAY2BGR);
+				// // framebuf.convertTo(framebuf, CV_8UC3);
+				if(framebuf.channels() > 1)
+					cv::cvtColor(framebuf, framebuf, cv::COLOR_BGR2GRAY);
+
+				// Ensure that the frame is square
+				if(framebuf.rows != framebuf.cols) {
+					uint16_t res = framebuf.cols;
+					if (framebuf.rows > res)
+						res = framebuf.rows;
+
+					Mat frame(res, res, CV_8UC1, Scalar::all(0));
+					if (framebuf.rows > framebuf.cols)
+						framebuf.copyTo(frame(cv::Rect((framebuf.rows - framebuf.cols) / 2, 0, framebuf.cols, framebuf.rows)));
+					else
+						framebuf.copyTo(frame(cv::Rect(0, (framebuf.cols - framebuf.rows) / 2, framebuf.cols, framebuf.rows)));
+					framebuf = frame;
+				}
+				
+				// Frame processing ----------------
+				framePrev = frame; frame = framebuf;
+				if(framePrev.empty())
+					framePrev = frame;
+
+				// cv::Size sizeFrame(992+extr,992);
+				// cv::Mat testimg = std::get<2>(detectORB(d_images.at(0), d_images.at(1), 2.5));
+
+				cout << "[Frame: " << start + ifr << "]" << endl;
+				auto millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+				// Initial call is required to initialize motion processing
+				// trackingMotV2_1  - Detector + motion
+				// trackingMotV2_2  - Interactive ORB descriptors for the whole frame
+				// trackingMotV2_3  - Detector + ORB descriptors for the whole frame
+				if(args_info.rescale_arg < 1) {
+					rescaleCanvas(framePrev, args_info.rescale_arg);
+					if(frame.data != framePrev.data)
+						rescaleCanvas(frame, args_info.rescale_arg);
+				}
+				cv::Mat res = trackingMotV2_1(pathmodel, device_type, framePrev, frame, objects, start + ifr, confidence, initOutp ? filename: string());
+				// cv::Mat testimg = trackingMotV2_3(pathmodel, device_type, framePrev, framePrev, objects, start, confidence);
+				std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
+					// << "ms; " << "confidence threshold : " << confidence
+					<< " ms" << endl;
+
+				cv::Size sizeFrame(res.cols, res.rows);
+				if(initOutp) {
+					writer.open(filename + "_demo.mp4", codec, fps, sizeFrame, true);
+					initOutp = false;
+				}
+				writer.write(res);
+				// trackingMotV2_1_artemis(pathmodel, device_type, d_images.at(ifr), d_images.at(ifr + 1), objects, start + ifr, confidence);
+				// writer.write(trackingMotV2_3(pathmodel, device_type, d_images.at(ifr), d_images.at(ifr + 1), objects, start + ifr, confidence));
+				// writer.write(std::get<2>(detectORB(d_images.at(ifr), d_images.at(ifr + 1), 2.5)));
+			}
 		}
+
+		// for (int i = 0; i < d_images.size() - 1; i++)
+		// {
+		// 	cout << "[Frame: " << start + i << "]" << endl;
+		// 	millisec = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+		// 	framePrev = d_images.at(i);
+		// 	frame = d_images.at(i + 1);
+		// 	if(args_info.rescale_arg < 1) {
+		// 		rescaleCanvas(framePrev, args_info.rescale_arg);
+		// 		rescaleCanvas(frame, args_info.rescale_arg);
+		// 	}
+		// 	cv::Mat res = trackingMotV2_1(pathmodel, device_type, framePrev, frame, objects, start + i, confidence);
+		// 	writer.write(res);
+		// 	std::cout << "Tracking time: " << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() - millisec
+		// 		// << "ms; " << "confidence threshold : " << confidence
+		// 		<< " ms" << endl;
+		// 	// trackingMotV2_1_artemis(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, confidence);
+		// 	// writer.write(trackingMotV2_3(pathmodel, device_type, d_images.at(i), d_images.at(i + 1), objects, start + i, confidence));
+		// 	// writer.write(std::get<2>(detectORB(d_images.at(i), d_images.at(i + 1), 2.5)));
+		// }
+
 		writer.release();
 		traceObjects(objects, filename);
 		return 0;
 
 		// Test Id fixing
+		vector<cv::Mat> d_images;
 		d_images = LoadVideo(argv[2], start, nfram);
 
 		vector<OBJdetect> obj_detects;

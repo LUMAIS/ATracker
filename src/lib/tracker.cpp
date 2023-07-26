@@ -16,7 +16,7 @@ vector<Mat> LoadVideo(const string &paths, uint16_t startframe, uint16_t getfram
 
 	if (!cap.isOpened())
 	{
-		std::cout << "[StubVideoGrabber]: Cannot open the video file" << endl;
+		std::cout << "[LoadVideo]: Cannot open the video file" << endl;
 	}
 	else
 	{
@@ -24,7 +24,8 @@ vector<Mat> LoadVideo(const string &paths, uint16_t startframe, uint16_t getfram
 
 		cap.set(cv::CAP_PROP_POS_FRAMES, startframe);
 
-		for (int frame_count = 0; frame_count < cap.get(cv::CAP_PROP_FRAME_COUNT); frame_count++)
+		const size_t  framesNum = cap.get(cv::CAP_PROP_FRAME_COUNT);
+		for (size_t frame_count = 0; frame_count < framesNum; frame_count++)
 		{
 			if (frame_count > getframes)
 			{

@@ -1,31 +1,34 @@
+cmake_minimum_required(VERSION 3.14)
+
 if (POLICY CMP0048)
     cmake_policy(SET CMP0048 NEW)
 endif (POLICY CMP0048)
-
-cmake_minimum_required(VERSION 3.14)
 
 project(atracker VERSION 1.0.1
             DESCRIPTION "Basic ant tracker (former AntDetect), whose stable functionality is integrated into LAFFTrack/artemis"
             HOMEPAGE_URL https://github.com/LUMAIS/atracker
             LANGUAGES C CXX)
 
-execute_process(
-    COMMAND git describe --always --dirty=+ --broken=-
-    # PROJECT_SOURCE_DIR
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_SRC_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-set(CMDLINE_PARSER_VERSION "${CMAKE_PROJECT_VERSION} (${GIT_SRC_VERSION})")
-message(STATUS CMDLINE_PARSER_VERSION="${CMDLINE_PARSER_VERSION}")
-# Transfer some definitions to the source code
-add_definitions(-DGIT_SRC_VERSION="${GIT_SRC_VERSION}")
-add_definitions(-DCMDLINE_PARSER_VERSION="${CMDLINE_PARSER_VERSION}")
-# # generate version.cc
-# configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cc.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cc" @ONLY)
-# list(APPEND SOURCES "${CMAKE_CURRENT_BINARY_DIR}/version.cc" version.hh)
+find_package(Git)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND git describe --always --dirty=+ --broken=-
+        # PROJECT_SOURCE_DIR
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_SRC_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    set(CMDLINE_PARSER_VERSION "${CMAKE_PROJECT_VERSION} (${GIT_SRC_VERSION})")
+    message(STATUS CMDLINE_PARSER_VERSION="${CMDLINE_PARSER_VERSION}")
+    # Transfer some definitions to the source code
+    add_definitions(-DGIT_SRC_VERSION="${GIT_SRC_VERSION}")
+    add_definitions(-DCMDLINE_PARSER_VERSION="${CMDLINE_PARSER_VERSION}")
+    # # generate version.cc
+    # configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.cc.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cc" @ONLY)
+    # list(APPEND SOURCES "${CMAKE_CURRENT_BINARY_DIR}/version.cc" version.hh)
+endif(GIT_FOUND)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/arc)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
             
